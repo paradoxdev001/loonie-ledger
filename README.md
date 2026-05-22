@@ -2,6 +2,15 @@
 
 A local-only household finance tracker for Canadian bank statements. No accounts, no cloud, no build step.
 
+## Features
+
+- **Import CSV and PDF statements** from major Canadian institutions (TD, RBC, Amex, BMO) with built-in parsers, plus a generic CSV fallback.
+- **Auto-categorization** of transactions via rule-based matching, with manual review before import.
+- **Deduplication** — re-importing an overlapping statement won't create duplicate transactions.
+- **Spending reports** and recurring-bill detection, charted with Chart.js.
+- **AI-assisted converter authoring** — point the wizard at a statement from an unsupported bank and it drafts a parser spec for you (bring your own Anthropic or OpenAI key). The model only ever emits a JSON spec; it never sees your transaction data, and parsing itself stays 100% deterministic.
+- **Fully local** — all data lives in your browser (IndexedDB), with JSON export/import for backups.
+
 ## Running locally
 
 ES modules require an HTTP server — double-clicking `index.html` won't work. Start one with:
@@ -55,3 +64,7 @@ Each institution's parser is a JSON spec stored in the DB. See `CLAUDE.md` for t
 ## Data
 
 All data is local to your browser. Use **Export backup** (header) to save a JSON snapshot and **Import backup** to restore. No data leaves your machine.
+
+## License
+
+[MIT](LICENSE) © Paradox Dev
