@@ -1,2 +1,27 @@
-sample data/
 .DS_Store
+
+# Local/private finance data
+sample data/
+samples/
+statements/
+exports/
+backups/
+*.csv
+*.qfx
+*.ofx
+*.pdf
+*.xlsx
+*.xls
+
+# Secrets
+.env
+.env.*
+*.pem
+*.key
+
+# Logs/build
+*.log
+node_modules/
+dist/
+build/
+.vercel/
