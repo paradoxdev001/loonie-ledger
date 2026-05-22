@@ -1,16 +1,70 @@
 import html from '../html.js';
-import { useState, useEffect, Fragment } from '../react.js';
+import { useState, useEffect, useRef, Fragment } from '../react.js';
 import { useApp } from '../state.js';
 import { dao, STORE } from '../db/store.js';
 import { ACCOUNT_TYPE_LABEL } from '../constants.js';
+import { downloadBlob, uid } from '../utils.js';
+import { normalizeWizardSpec } from '../llm/adapter.js';
 import { Button, Card, CardHeader, Badge, EmptyState, Modal, Label, Input } from './ui/index.js';
 import { PageContainer, PageHeader } from './Layout.js';
+
+const CONVERTER_FILE_MARKER = 'loonie_ledger_converter';
+
+// Build a portable, shareable JSON envelope for one converter. Blanks the
+// recipient-specific account nickname; drops local/derived fields (id, is_builtin, …).
+export function buildConverterFile(converter) {
+  const spec = JSON.parse(converter.spec_json);
+  spec.default_account = '';
+  return JSON.stringify({
+    [CONVERTER_FILE_MARKER]: 1,
+    exported_at: new Date().toISOString(),
+    converter: {
+      key: converter.key,
+      name: converter.name,
+      institution: converter.institution,
+      account_type: converter.account_type || null,
+      format: converter.format,
+      notes: converter.notes || null,
+      spec,
+    },
+  }, null, 2);
+}
+
+// Parse + validate a shared converter file. Throws a clear Error on the wrong
+// file type or missing fields. Returns fields ready for dao.saveConverter.
+export function parseConverterFile(text) {
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch (e) {
+    throw new Error('File is not valid JSON');
+  }
+  if (!parsed || parsed[CONVERTER_FILE_MARKER] == null || !parsed.converter) {
+    throw new Error('Not a Loonie Ledger converter file');
+  }
+  const c = parsed.converter;
+  if (!c.name || !c.institution || (c.format !== 'csv' && c.format !== 'pdf')) {
+    throw new Error('Converter file is missing required fields');
+  }
+  if (!c.spec || typeof c.spec !== 'object' || !c.spec.type) {
+    throw new Error('Converter file has an invalid spec');
+  }
+  return {
+    name: c.name,
+    institution: c.institution,
+    account_type: c.account_type || null,
+    format: c.format,
+    notes: c.notes || null,
+    spec: normalizeWizardSpec(c.spec),
+  };
+}
 
 export function ConvertersView() {
   const { state, dispatch } = useApp();
   const [items, setItems] = useState([]);
   const [editing, setEditing] = useState(null);
   const [usageCounts, setUsageCounts] = useState({});
+  const fileRef = useRef(null);
 
   const refresh = () => {
     setItems(dao.listConverters());
@@ -29,26 +83,52 @@ export function ConvertersView() {
     dispatch({ type: 'TOAST', toast: { kind: 'success', message: 'Converter deleted' } });
   };
 
+  const onExport = (c) => {
+    downloadBlob(buildConverterFile(c), `loonie-converter-${c.key}.json`, 'application/json');
+    dispatch({ type: 'TOAST', toast: { kind: 'success', message: 'Converter exported' } });
+  };
+
+  const onImport = async (file) => {
+    if (!file) return;
+    try {
+      const { name, institution, account_type, format, notes, spec } = parseConverterFile(await file.text());
+      const key = `${institution}_${format}_${uid().slice(0, 4)}`.toLowerCase().replace(/\s+/g, '_');
+      dao.saveConverter({
+        key, name, institution, account_type, format,
+        spec_json: JSON.stringify(spec), notes, is_builtin: 0,
+      });
+      refresh();
+      dispatch({ type: 'TOAST', toast: { kind: 'success', message: `Imported "${name}"` } });
+    } catch (e) {
+      dispatch({ type: 'TOAST', toast: { kind: 'error', message: 'Import failed: ' + e.message } });
+    }
+  };
+
   return html`<${PageContainer}>
     <${PageHeader}
       title="Converters"
-      description="Each converter parses one institution's document format deterministically. Edit, copy, or delete them — built-ins can be edited too."
+      description="Each converter parses one institution's document format deterministically. Edit, export, or delete them — built-ins can be edited too."
     />
 
     <${Card}>
-      <${CardHeader} title=${`${items.length} converters`} />
-      <${ConverterList} items=${items} usageCounts=${usageCounts} onView=${c => setEditing(c)} onDelete=${onDelete} />
+      <${CardHeader} title=${`${items.length} converters`} right=${html`<${Fragment}>
+        <input ref=${fileRef} type="file" accept=".json" class="hidden"
+          onChange=${e => { onImport(e.target.files[0]); e.target.value = ''; }} />
+        <${Button} variant="secondary" size="sm" onClick=${() => fileRef.current?.click()}>Import converter</${Button}>
+      </${Fragment}>`} />
+      <${ConverterList} items=${items} usageCounts=${usageCounts} onView=${c => setEditing(c)} onExport=${onExport} onDelete=${onDelete} />
     </${Card}>
 
     ${editing && html`<${ConverterDetailModal}
       converter=${editing}
+      onExport=${onExport}
       onClose=${() => setEditing(null)}
       onSaved=${() => { setEditing(null); refresh(); dispatch({ type: 'TOAST', toast: { kind: 'success', message: 'Saved' } }); }}
     />`}
   </${PageContainer}>`;
 }
 
-function ConverterList({ items, usageCounts, onView, onDelete }) {
+function ConverterList({ items, usageCounts, onView, onExport, onDelete }) {
   return html`<div class="overflow-auto">
     <table class="w-full text-sm">
       <thead class="bg-slate-50 text-slate-600 text-xs uppercase tracking-wide">
@@ -80,6 +160,7 @@ function ConverterList({ items, usageCounts, onView, onDelete }) {
             </td>
             <td class="px-4 py-3 text-right">
               <${Button} variant="ghost" size="sm" onClick=${() => onView(c)}>View</${Button}>
+              <${Button} variant="ghost" size="sm" onClick=${() => onExport(c)}>Export</${Button}>
               <${Button} variant="ghost" size="sm" onClick=${() => onDelete(c)}>Delete</${Button}>
             </td>
           </tr>`;
@@ -90,7 +171,7 @@ function ConverterList({ items, usageCounts, onView, onDelete }) {
   </div>`;
 }
 
-function ConverterDetailModal({ converter, onClose, onSaved }) {
+function ConverterDetailModal({ converter, onClose, onSaved, onExport }) {
   const [name, setName] = useState(converter.name);
   const [notes, setNotes] = useState(converter.notes || '');
   const [specText, setSpecText] = useState(JSON.stringify(JSON.parse(converter.spec_json), null, 2));
@@ -117,6 +198,7 @@ function ConverterDetailModal({ converter, onClose, onSaved }) {
     title=${`Converter: ${converter.name}`}
     size="lg"
     footer=${html`<${Fragment}>
+      <${Button} variant="ghost" onClick=${() => onExport(converter)}>Export</${Button}>
       <${Button} variant="ghost" onClick=${onClose}>Close</${Button}>
       <${Button} onClick=${save}>Save</${Button}>
     </${Fragment}>`}
