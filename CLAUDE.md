@@ -6,8 +6,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A local-only household finance tracker split into native ES modules under `src/`. No build step, no npm, no bundler. Libraries (React 18, PapaParse, PDF.js, Chart.js, Tailwind) are loaded from CDN as UMD globals. JSX is replaced with **htm** tagged template literals. The CSV sample file `download-transactions.csv` is a test fixture for the RBC Visa converter.
 
-The original monolith is preserved at `finance-app-html.html` as an archive/fallback.
-
 ## Architecture
 
 `index.html` is a thin shell that loads CDN scripts and then `<script type="module" src="src/main.js">`. All app logic lives in `src/`.
