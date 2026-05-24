@@ -18,8 +18,10 @@ export function TransactionsView() {
   const [accounts, setAccounts] = useState([]);
   const [rows, setRows] = useState([]);
   const [sort, setSort] = useState({ col: 'transaction_date', dir: 'desc' });
-  const [createRuleFor, setCreateRuleFor] = useState(null);
+  const [editRule, setEditRule] = useState(null);
   const [aiOpen, setAiOpen] = useState(false);
+  const [tab, setTab] = useState('transactions');  // 'transactions' | 'rules'
+  const ruleCount = useMemo(() => dao.listCategoryRules().length, [state.refreshKey]);
 
   useEffect(() => {
     const activeIds = new Set(STORE.transactions.map(t => t.account_id));
@@ -52,47 +54,67 @@ export function TransactionsView() {
   const [bannerDismissed, setBannerDismissed] = useState(() => localStorage.getItem(AI_BANNER_DISMISSED_KEY) === '1');
   const dismissBanner = () => { localStorage.setItem(AI_BANNER_DISMISSED_KEY, '1'); setBannerDismissed(true); };
 
+  const subTabs = [
+    { key: 'transactions', label: 'Transactions' },
+    { key: 'rules', label: ruleCount > 0 ? `Rules (${ruleCount})` : 'Rules' },
+  ];
+
   return html`<${PageContainer}>
     <${PageHeader}
       title="Transactions"
-      description=${`${rows.length} matching transactions`}
-      action=${html`<div class="flex items-center gap-2">
-        ${uncategorizedCount > 0 && html`<${Fragment}>
-          <${Button} variant="secondary" onClick=${() => setAiOpen(true)}>
-            AI Suggest (${uncategorizedCount})
-          </${Button}>
-          <${HelpLink} anchor="categorization" />
-        </${Fragment}>`}
-        <${Button} variant="secondary" onClick=${() => exportCsv(sortedRows)}>Export CSV</${Button}>
-        <${Button} onClick=${() => dispatch({ type: 'SET_VIEW', view: 'upload' })}>Upload more</${Button}>
-      </div>`}
+      description=${tab === 'rules'
+        ? `${ruleCount} category rule${ruleCount !== 1 ? 's' : ''}`
+        : `${rows.length} matching transactions`}
+      action=${tab === 'rules'
+        ? html`<${Button} onClick=${() => setEditRule({})}>Add rule</${Button}>`
+        : html`<div class="flex items-center gap-2">
+          ${uncategorizedCount > 0 && html`<${Fragment}>
+            <${Button} variant="secondary" onClick=${() => setAiOpen(true)}>
+              AI Suggest (${uncategorizedCount})
+            </${Button}>
+            <${HelpLink} anchor="categorization" />
+          </${Fragment}>`}
+          <${Button} variant="secondary" onClick=${() => exportCsv(sortedRows)}>Export CSV</${Button}>
+          <${Button} onClick=${() => dispatch({ type: 'SET_VIEW', view: 'upload' })}>Upload more</${Button}>
+        </div>`}
     />
 
-    ${uncategorizedCount > 0 && !bannerDismissed && html`<div class="rounded-lg bg-butter-soft border border-butter-line p-4 mb-6 flex items-start gap-3">
-      <div class="flex-1">
-        <div class="text-sm font-medium text-butter-deep">Use AI to auto-categorize transactions</div>
-        <p class="text-xs text-butter-deep mt-1">
-          ${uncategorizedCount} transaction${uncategorizedCount !== 1 ? 's' : ''} ${uncategorizedCount !== 1 ? 'are' : 'is'} uncategorized. AI suggests a category for each — you review and approve before anything is applied.
-        </p>
-        <div class="mt-3 flex flex-wrap items-center gap-2">
-          <${Button} onClick=${() => setAiOpen(true)}>✨ Categorize with AI</${Button}>
-          <${HelpLink} anchor="categorization" label="How does this work?" />
-        </div>
-      </div>
-      <button onClick=${dismissBanner} class="text-butter-deep hover:opacity-70 text-xl leading-none" aria-label="Dismiss">×</button>
-    </div>`}
+    <div class="flex items-center gap-1 mb-6 border-b border-rule">
+      ${subTabs.map(t => html`<button key=${t.key} onClick=${() => setTab(t.key)}
+        class=${classNames('px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
+          tab === t.key ? 'border-forest text-ink' : 'border-transparent text-ink-mute hover:text-ink')}>
+        ${t.label}</button>`)}
+    </div>
 
-    <${Card} className="mb-6">
-      <div class="p-4">
-        <${TransactionFilters} filters=${filters} setFilters=${setFilters} accounts=${accounts} />
-      </div>
-    </${Card}>
+    ${tab === 'rules'
+      ? html`<${RulesPanel} setEditRule=${setEditRule} />`
+      : html`<${Fragment}>
+        ${uncategorizedCount > 0 && !bannerDismissed && html`<div class="rounded-lg bg-butter-soft border border-butter-line p-4 mb-6 flex items-start gap-3">
+          <div class="flex-1">
+            <div class="text-sm font-medium text-butter-deep">Use AI to auto-categorize transactions</div>
+            <p class="text-xs text-butter-deep mt-1">
+              ${uncategorizedCount} transaction${uncategorizedCount !== 1 ? 's' : ''} ${uncategorizedCount !== 1 ? 'are' : 'is'} uncategorized. AI suggests a category for each — you review and approve before anything is applied.
+            </p>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <${Button} onClick=${() => setAiOpen(true)}>✨ Categorize with AI</${Button}>
+              <${HelpLink} anchor="categorization" label="How does this work?" />
+            </div>
+          </div>
+          <button onClick=${dismissBanner} class="text-butter-deep hover:opacity-70 text-xl leading-none" aria-label="Dismiss">×</button>
+        </div>`}
 
-    <${Card}>
-      <${TransactionTable} rows=${sortedRows} update=${update} remove=${remove} recurringTxnIds=${recurringTxnIds} onCreateRule=${setCreateRuleFor} sort=${sort} setSort=${setSort} />
-    </${Card}>
+        <${Card} className="mb-6">
+          <div class="p-4">
+            <${TransactionFilters} filters=${filters} setFilters=${setFilters} accounts=${accounts} />
+          </div>
+        </${Card}>
 
-    <${CreateRuleModal} transaction=${createRuleFor} onClose=${() => setCreateRuleFor(null)} />
+        <${Card}>
+          <${TransactionTable} rows=${sortedRows} update=${update} remove=${remove} recurringTxnIds=${recurringTxnIds} onCreateRule=${(r) => setEditRule({ pattern: r.description || '', category: r.category || 'Other' })} sort=${sort} setSort=${setSort} />
+        </${Card}>
+      </${Fragment}>`}
+
+    <${RuleModal} rule=${editRule} onClose=${() => setEditRule(null)} />
     <${AICategorizeModal} open=${aiOpen} onClose=${() => setAiOpen(false)} />
   </${PageContainer}>`;
 }
@@ -309,7 +331,12 @@ function exportCsv(rows) {
   downloadBlob(csv, 'transactions.csv', 'text/csv');
 }
 
-function CreateRuleModal({ transaction, onClose }) {
+const MATCH_TYPE_LABEL = { contains: 'Contains', startswith: 'Starts with', regex: 'Regex' };
+
+// One modal for both creating and editing a rule. `rule` is null (closed), a
+// seed object ({ pattern, category } from a transaction's +rule, or {} for a
+// blank new rule), or an existing rule with an `id` (edit-in-place).
+function RuleModal({ rule, onClose }) {
   const { dispatch } = useApp();
   const [pattern, setPattern] = useState('');
   const [matchType, setMatchType] = useState('contains');
@@ -318,40 +345,43 @@ function CreateRuleModal({ transaction, onClose }) {
   const [applyToExisting, setApplyToExisting] = useState(true);
 
   useEffect(() => {
-    if (transaction) {
-      setPattern(transaction.description || '');
-      setMatchType('contains');
-      setCategory(transaction.category || 'Other');
-      setPriority(100);
-      setApplyToExisting(true);
-    }
-  }, [transaction]);
+    if (!rule) return;
+    setPattern(rule.pattern || '');
+    setMatchType(rule.match_type || 'contains');
+    setCategory(rule.category || '');
+    setPriority(rule.priority || 100);
+    setApplyToExisting(true);
+  }, [rule]);
 
-  if (!transaction) return null;
+  if (!rule) return null;
+
+  const isEdit = rule.id != null;
 
   const save = () => {
     if (!pattern.trim() || !category) return;
-    const rule = { pattern: pattern.trim(), match_type: matchType, category, priority: Number(priority) };
-    dao.saveCategoryRule(rule);
+    const payload = { pattern: pattern.trim(), match_type: matchType, category, priority: Number(priority) };
+    if (isEdit) payload.id = rule.id;
+    dao.saveCategoryRule(payload);
     let updated = 0;
     if (applyToExisting) {
       for (const t of STORE.transactions) {
-        if (applyUserRules(t.description, [rule])) {
+        if (applyUserRules(t.description, [payload])) {
           dao.updateTransaction(t.id, { category });
           updated++;
         }
       }
     }
+    const verb = isEdit ? 'updated' : 'saved';
     const msg = updated > 0
-      ? `Rule saved: "${rule.pattern}" → ${category} (applied to ${updated} existing transaction${updated !== 1 ? 's' : ''})`
-      : `Rule saved: "${rule.pattern}" → ${category}`;
+      ? `Rule ${verb}: "${payload.pattern}" → ${category} (applied to ${updated} existing transaction${updated !== 1 ? 's' : ''})`
+      : `Rule ${verb}: "${payload.pattern}" → ${category}`;
     dispatch({ type: 'TOAST', toast: { kind: 'success', message: msg } });
     dispatch({ type: 'REFRESH' });
     onClose();
   };
 
-  return html`<${Modal} open=${!!transaction} onClose=${onClose} title="Create category rule"
-    footer=${html`<${Fragment}><${Button} variant="ghost" onClick=${onClose}>Cancel</${Button}><${Button} onClick=${save}>Save rule</${Button}></${Fragment}>`}>
+  return html`<${Modal} open=${!!rule} onClose=${onClose} title=${isEdit ? 'Edit category rule' : 'Create category rule'}
+    footer=${html`<${Fragment}><${Button} variant="ghost" onClick=${onClose}>Cancel</${Button}><${Button} onClick=${save}>${isEdit ? 'Save changes' : 'Save rule'}</${Button}></${Fragment}>`}>
     <div class="space-y-4 text-sm">
       <div>
         <${Label}>Pattern</${Label}>
@@ -381,10 +411,57 @@ function CreateRuleModal({ transaction, onClose }) {
       <label class="flex items-center gap-2 cursor-pointer select-none">
         <input type="checkbox" checked=${applyToExisting} onChange=${e => setApplyToExisting(e.target.checked)}
           class="w-4 h-4 rounded border-rule accent-maple" />
-        <span class="text-ink-2">Apply to all existing transactions</span>
+        <span class="text-ink-2">Apply to all matching existing transactions</span>
       </label>
     </div>
   </${Modal}>`;
+}
+
+// Manage category rules: the list/edit/delete counterpart to the +rule button
+// and AI Suggest, both of which only ever create rules. `setEditRule` opens the
+// shared RuleModal (rendered once in TransactionsView).
+function RulesPanel({ setEditRule }) {
+  const { state, dispatch } = useApp();
+  const rules = useMemo(() => dao.listCategoryRules(), [state.refreshKey]);
+
+  const remove = (id) => {
+    if (!confirm('Delete this rule?')) return;
+    dao.deleteCategoryRule(id);
+    dispatch({ type: 'TOAST', toast: { kind: 'success', message: 'Rule deleted' } });
+    dispatch({ type: 'REFRESH' });
+  };
+
+  return html`<${Card}>
+      ${rules.length === 0
+        ? html`<${EmptyState} icon="🏷️" title="No category rules yet"
+            description="Rules assign a category to any transaction whose description matches a pattern, applied in priority order (highest first). Create one from a transaction's “+rule” button, from AI Suggest, or add one here."
+            action=${html`<${Button} onClick=${() => setEditRule({})}>Add rule</${Button}>`} />`
+        : html`<div class="overflow-auto scrollbar-thin">
+            <table class="w-full text-sm">
+              <thead class="bg-paper text-ink-2 text-xs uppercase tracking-wide">
+                <tr>
+                  <th class="text-left px-3 py-2">Pattern</th>
+                  <th class="text-left px-3 py-2 w-28">Match</th>
+                  <th class="text-left px-3 py-2 w-48">Category</th>
+                  <th class="text-right px-3 py-2 w-24">Priority</th>
+                  <th class="text-right px-3 py-2 w-20"></th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-rule">
+                ${rules.map(r => html`<tr key=${r.id}>
+                  <td class="px-3 py-2 font-mono break-all">${r.pattern}</td>
+                  <td class="px-3 py-2"><${Badge}>${MATCH_TYPE_LABEL[r.match_type] || r.match_type}</${Badge}></td>
+                  <td class="px-3 py-2">${r.category}</td>
+                  <td class="px-3 py-2 text-right font-mono text-ink-2">${r.priority}</td>
+                  <td class="px-3 py-2 text-right whitespace-nowrap">
+                    <button onClick=${() => setEditRule(r)} class="text-ink-mute hover:text-forest text-xs mr-2">Edit</button>
+                    <button onClick=${() => remove(r.id)} class="text-plum hover:text-plum-deep" title="Delete rule">🗑</button>
+                  </td>
+                </tr>`)}
+              </tbody>
+            </table>
+          </div>`}
+    </${Card}>`;
 }
 
 const AI_AVAILABLE_CATS = CATEGORIES.filter(c =>
