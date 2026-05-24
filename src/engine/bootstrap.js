@@ -1,4 +1,4 @@
-import { parseDate, parseAmount } from '../utils.js';
+import { parseDate, parseAmount, getCurrency } from '../utils.js';
 import { pdfToText } from './converter.js';
 
 const Papa = window.Papa;
@@ -35,7 +35,7 @@ export function suggestCSVSpec(text) {
     amount_sign: 'natural',
     account_type: 'chequing',
     default_account: '',
-    default_currency: 'CAD'
+    default_currency: getCurrency()
   };
 
   const numCols = sample[0]?.length || 0;
@@ -138,7 +138,7 @@ export function suggestPDFSpec(text) {
       amount_sign: 'natural',
       account_type: 'credit_card',
       default_account: '',
-      default_currency: 'CAD'
+      default_currency: getCurrency()
     },
     sample_matches: lines.filter(l => new RegExp(best.regex).test(l)).slice(0, 5),
     candidate: best

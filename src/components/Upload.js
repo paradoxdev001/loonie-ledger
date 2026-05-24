@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo, useRef } from '../react.js';
 import { useApp } from '../state.js';
 import { dao } from '../db/store.js';
 import { ACCOUNT_TYPES, ACCOUNT_TYPE_LABEL } from '../constants.js';
-import { classNames, fingerprint, formatBatchSummary } from '../utils.js';
+import { classNames, fingerprint, formatBatchSummary, getCurrency } from '../utils.js';
 import { detectFormat, readFileForParse, applyConverter, pdfToText } from '../engine/converter.js';
 import { autoCategorize, extractMerchant } from '../engine/categorizer.js';
 import { Button, Card, CardHeader, Badge, Label, Input, Select, HelpLink } from './ui/index.js';
@@ -47,7 +47,7 @@ async function parseFileWithConverter(file, converter, { institution = '', accou
     institution: resolvedInstitution,
     account_name: acctName,
     account_type: accountType || spec.account_type,
-    currency: spec.default_currency || 'CAD'
+    currency: spec.default_currency || getCurrency()
   });
   const document_id = dao.insertDocument({
     filename: file.name, format: converter.format,

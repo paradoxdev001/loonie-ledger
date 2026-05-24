@@ -3,7 +3,7 @@ import { useState, useRef } from '../react.js';
 import { useApp } from '../state.js';
 import { dao } from '../db/store.js';
 import { seedBuiltins } from '../db/store.js';
-import { downloadBlob, setDateFormat } from '../utils.js';
+import { downloadBlob, setDateFormat, getCurrency, setCurrency } from '../utils.js';
 import { getLLMConfig, setLLMConfig, LLM_PROVIDERS, LLM_KEY_STORAGE } from '../llm/adapter.js';
 import { Button, Card, CardHeader, Input, Select, Label } from './ui/index.js';
 import { PageContainer, PageHeader } from './Layout.js';
@@ -12,12 +12,20 @@ export function SettingsView() {
   const { dispatch } = useApp();
   const fileRef = useRef(null);
   const [dateFmt, setDateFmt] = useState(() => localStorage.getItem('loonieledger_date_format') || 'iso');
+  const [currency, setCurrencyState] = useState(() => getCurrency());
   const [llmProvider, setLlmProvider] = useState(() => getLLMConfig().provider);
   const [llmKey, setLlmKey] = useState(() => localStorage.getItem(LLM_KEY_STORAGE[getLLMConfig().provider]) || '');
 
   const onDateFormat = (fmt) => {
     setDateFormat(fmt);
     setDateFmt(fmt);
+    dispatch({ type: 'REFRESH' });
+  };
+
+  const onCurrency = (code) => {
+    const upper = code.toUpperCase().trim();
+    setCurrency(upper);
+    setCurrencyState(upper);
     dispatch({ type: 'REFRESH' });
   };
 
@@ -74,7 +82,7 @@ export function SettingsView() {
         <${CardHeader} title="Display" />
         <div class="px-4 pb-4">
           <div class="text-sm font-medium text-ink-2 mb-2">Date format</div>
-          <div class="flex gap-6">
+          <div class="flex gap-6 mb-4">
             <label class="flex items-center gap-2 cursor-pointer">
               <input type="radio" name="dateFmt" value="iso"
                 checked=${dateFmt === 'iso'}
@@ -87,6 +95,17 @@ export function SettingsView() {
                 onChange=${() => onDateFormat('friendly')} />
               <span class="text-sm text-ink-2">Friendly  <code class="text-xs bg-paper-3 px-1.5 py-0.5 rounded">May 31st, 2025</code></span>
             </label>
+          </div>
+          <div class="text-sm font-medium text-ink-2 mb-1">Default currency</div>
+          <div class="flex items-center gap-2">
+            <${Input}
+              value=${currency}
+              onChange=${e => setCurrencyState(e.target.value.toUpperCase())}
+              onBlur=${e => onCurrency(e.target.value)}
+              maxLength="3"
+              style=${{ width: '5rem', fontFamily: 'monospace', textTransform: 'uppercase' }}
+            />
+            <span class="text-xs text-ink-mute">ISO 4217 code — e.g. CAD, USD, GBP, EUR. Used as the fallback for new converters.</span>
           </div>
         </div>
       </${Card}>

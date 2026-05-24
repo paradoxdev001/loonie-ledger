@@ -1,5 +1,5 @@
 import { MONTH_ABBR } from '../constants.js';
-import { parseDate, parseAmount, formatMoney } from '../utils.js';
+import { parseDate, parseAmount, formatMoney, getCurrency } from '../utils.js';
 import { inferTxnType } from './categorizer.js';
 
 const Papa = window.Papa;
@@ -198,7 +198,7 @@ export async function applyConverter(file, raw, spec, ctx={}) {
   const txns = [];
   const errors = [];
   const accountType = spec.account_type || 'chequing';
-  const currency = spec.default_currency || 'CAD';
+  const currency = spec.default_currency || getCurrency();
 
   if (spec.type === 'csv') {
     const text = raw.kind === 'text' ? raw.data : new TextDecoder().decode(raw.data);

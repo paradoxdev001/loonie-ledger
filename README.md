@@ -1,10 +1,10 @@
 # Loonie Ledger
 
-A local-only household finance tracker for Canadian bank statements. No accounts, no cloud, no build step.
+A local-only household finance tracker for bank statements. No accounts, no cloud, no build step.
 
 ## Features
 
-- **Import CSV and PDF statements** from major Canadian institutions (TD, RBC, Amex, BMO) with built-in parsers, plus a generic CSV fallback.
+- **Import CSV and PDF statements** from any institution. Built-in parsers are included for TD, RBC, Amex, and BMO, plus a generic CSV fallback.
 - **Auto-categorization** of transactions via rule-based matching, with manual review before import.
 - **Deduplication** — re-importing an overlapping statement won't create duplicate transactions.
 - **Spending reports** and recurring-bill detection, charted with Chart.js.

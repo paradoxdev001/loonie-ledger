@@ -1,7 +1,7 @@
 import html from '../html.js';
 import { useState, useEffect, useRef, Fragment } from '../react.js';
 import { ACCOUNT_TYPES, ACCOUNT_TYPE_LABEL, KNOWN_INSTITUTIONS } from '../constants.js';
-import { formatMoney, classNames, uid } from '../utils.js';
+import { formatMoney, classNames, uid, getCurrency } from '../utils.js';
 import { dao } from '../db/store.js';
 import { readFileForParse, applyConverter } from '../engine/converter.js';
 import { suggestCSVSpec, suggestPDFSpec } from '../engine/bootstrap.js';
@@ -44,7 +44,7 @@ export function BootstrapWizard({ open, onClose, file, format, previewText, defa
               type: 'csv', has_header: true, delimiter: ',',
               columns: { transaction_date: 'Date', description: 'Description', amount: 'Amount' },
               date_format: 'auto', amount_handling: 'single_signed', amount_sign: 'natural',
-              account_type: 'chequing', default_account: '', default_currency: 'CAD'
+              account_type: 'chequing', default_account: '', default_currency: getCurrency()
             });
           }
           setStage('csv-editor');
@@ -63,7 +63,7 @@ export function BootstrapWizard({ open, onClose, file, format, previewText, defa
               date_format: 'MM/DD',
               year: new Date().getFullYear(),
               amount_handling: 'single_signed', amount_sign: 'natural',
-              account_type: 'credit_card', default_account: '', default_currency: 'CAD'
+              account_type: 'credit_card', default_account: '', default_currency: getCurrency()
             });
           }
           setStage('pdf-editor');

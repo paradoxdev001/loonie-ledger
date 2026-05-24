@@ -166,7 +166,7 @@ export function HelpView() {
               CSV"). Parsing is <strong>100% deterministic</strong> — the converter is just a set of
               rules; the same file always produces the same transactions.</${P}>
             <${Sub}>Built-in vs. custom</${Sub}>
-            <${P}>Loonie Ledger ships with built-in converters for the banks Canadians actually use —
+            <${P}>Loonie Ledger ships with built-in converters for
               ${' '}<strong>TD, RBC, Amex, and BMO</strong> (chequing, credit card, and statement formats),
               plus a generic CSV fallback. Converters you create or import are marked
               ${' '}<strong>Custom</strong>. Manage all of them in the <strong>Converters</strong> view, where
@@ -285,8 +285,8 @@ export function HelpView() {
               CC payment) inferred from its amount sign and account, and a <strong>category</strong>${' '}
               (Groceries, Dining, Subscriptions, …).</${P}>
             <${Sub}>Automatic categorization</${Sub}>
-            <${P}>On import, descriptions are matched against a built-in library of Canadian merchant
-              keywords (Loblaws → Groceries, Tim Hortons → Dining, Petro-Canada → Fuel, and so on).
+            <${P}>On import, descriptions are matched against a built-in library of merchant
+              keywords (grocery chains, restaurants, fuel stations, and so on).
               Anything unmatched lands in <em>Other</em>.</${P}>
             <${Sub}>Your own rules</${Sub}>
             <${P}>Create rules from the <strong>+rule</strong> button on any transaction. A rule has a

@@ -1,4 +1,4 @@
-import { debounce, deriveSignedAmount } from '../utils.js';
+import { debounce, deriveSignedAmount, getCurrency } from '../utils.js';
 import { BUILTIN_CONVERTERS, RETIRED_BUILTIN_KEYS } from '../data/builtinConverters.js';
 
 const DB_NAME = 'household_finance_db';
@@ -123,7 +123,7 @@ export const dao = {
   listAccounts: () => [...STORE.accounts].sort((a,b) =>
     (a.institution || '').localeCompare(b.institution || '') ||
     (a.account_name || '').localeCompare(b.account_name || '')),
-  upsertAccount: ({ institution, account_name, account_type, currency='CAD' }) => {
+  upsertAccount: ({ institution, account_name, account_type, currency=getCurrency() }) => {
     const existing = STORE.accounts.find(a => a.institution === institution && a.account_name === account_name);
     if (existing) return existing.id;
     const id = nextId('accounts');
@@ -225,7 +225,7 @@ export const dao = {
       document_id: tx.document_id || null, account_id: tx.account_id || null,
       transaction_date: tx.transaction_date, posted_date: tx.posted_date || null,
       description: tx.description, merchant: tx.merchant || null,
-      amount: tx.amount, signed_amount: signed, currency: tx.currency || 'CAD',
+      amount: tx.amount, signed_amount: signed, currency: tx.currency || getCurrency(),
       category: tx.category || null, transaction_type: tx.transaction_type || 'expense',
       is_excluded: tx.is_excluded ? 1 : 0, fingerprint: tx.fingerprint,
       created_at: new Date().toISOString()

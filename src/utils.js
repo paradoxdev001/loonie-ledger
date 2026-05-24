@@ -88,10 +88,27 @@ export function parseAmount(v) {
   return isNaN(n) ? null : n;
 }
 
-export function formatMoney(n, currency='CAD') {
+const CURRENCY_SYMBOLS = {
+  USD:'$', CAD:'$', AUD:'$', NZD:'$', HKD:'$', SGD:'$',
+  EUR:'€', GBP:'£', JPY:'¥', CNY:'¥', KRW:'₩',
+  CHF:'Fr.', SEK:'kr', NOK:'kr', DKK:'kr',
+  MXN:'$', BRL:'R$', INR:'₹', ZAR:'R', MYR:'RM', THB:'฿',
+};
+
+export function getCurrency() {
+  return localStorage.getItem('loonieledger_currency') || 'CAD';
+}
+
+export function setCurrency(code) {
+  localStorage.setItem('loonieledger_currency', code.toUpperCase().trim());
+}
+
+export function formatMoney(n, currency) {
   if (n === null || n === undefined || isNaN(n)) return '—';
+  const code = (currency || getCurrency()).toUpperCase();
+  const sym = CURRENCY_SYMBOLS[code] ?? code;
   const sign = n < 0 ? '-' : '';
-  return sign + '$' + Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+  return sign + sym + Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
 }
 
 export function deriveSignedAmount(t) {

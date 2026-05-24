@@ -32,11 +32,6 @@ export function HomeView() {
       description: 'All data stays in your browser. No accounts, no cloud sync, no servers. Nothing leaves your machine.',
     },
     {
-      icon: '🇨🇦',
-      title: 'Canadian-first',
-      description: 'Built-in support for TD, RBC, Amex, and BMO — the banks Canadians actually use.',
-    },
-    {
       icon: '📄',
       title: 'PDF & CSV support',
       description: 'Import directly from your bank\'s downloads — both spreadsheet exports and PDF statements are parsed automatically.',

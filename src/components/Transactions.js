@@ -370,7 +370,7 @@ const AI_AVAILABLE_CATS = CATEGORIES.filter(c =>
   !['Transfer','Credit Card Payment','Refund','Income','Other'].includes(c));
 
 function buildAIPrompt(entries) {
-  return `Categorize these Canadian personal finance transaction descriptions.
+  return `Categorize these personal finance transaction descriptions.
 Choose the best category from: ${AI_AVAILABLE_CATS.join(', ')}.
 Return ONLY valid JSON, no explanation: {"results":[{"i":0,"cat":"Dining"},{"i":1,"cat":"Groceries"},...]}
 
