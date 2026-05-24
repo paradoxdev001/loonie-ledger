@@ -8,6 +8,9 @@ import { inferTxnType, applyUserRules } from '../engine/categorizer.js';
 import { Button, Card, Select, Badge, EmptyState, Modal, Label, Input, SourceInfoButton, HelpLink } from './ui/index.js';
 import { PageContainer, PageHeader } from './Layout.js';
 import { detectRecurring } from './Reports.js';
+import { getLLMConfig, setLLMConfig, callLLMText, LLM_PROVIDERS } from '../llm/adapter.js';
+
+const AI_BANNER_DISMISSED_KEY = 'loonieledger_ai_banner_dismissed';
 
 export function TransactionsView() {
   const { state, dispatch } = useApp();
@@ -44,6 +47,10 @@ export function TransactionsView() {
 
   const recurringTxnIds = useMemo(() => detectRecurring(sortedRows).recurringTxnIds, [sortedRows]);
   const uncategorizedCount = useMemo(() => dao.countUncategorized(), [state.refreshKey]);
+  // Dismissible nudge. The header "AI Suggest" button stays regardless, so
+  // dismissing only hides the banner — it's never the only way back in.
+  const [bannerDismissed, setBannerDismissed] = useState(() => localStorage.getItem(AI_BANNER_DISMISSED_KEY) === '1');
+  const dismissBanner = () => { localStorage.setItem(AI_BANNER_DISMISSED_KEY, '1'); setBannerDismissed(true); };
 
   return html`<${PageContainer}>
     <${PageHeader}
@@ -60,6 +67,20 @@ export function TransactionsView() {
         <${Button} onClick=${() => dispatch({ type: 'SET_VIEW', view: 'upload' })}>Upload more</${Button}>
       </div>`}
     />
+
+    ${uncategorizedCount > 0 && !bannerDismissed && html`<div class="rounded-lg bg-butter-soft border border-butter-line p-4 mb-6 flex items-start gap-3">
+      <div class="flex-1">
+        <div class="text-sm font-medium text-butter-deep">Use AI to auto-categorize transactions</div>
+        <p class="text-xs text-butter-deep mt-1">
+          ${uncategorizedCount} transaction${uncategorizedCount !== 1 ? 's' : ''} ${uncategorizedCount !== 1 ? 'are' : 'is'} uncategorized. AI suggests a category for each — you review and approve before anything is applied.
+        </p>
+        <div class="mt-3 flex flex-wrap items-center gap-2">
+          <${Button} onClick=${() => setAiOpen(true)}>✨ Categorize with AI</${Button}>
+          <${HelpLink} anchor="categorization" label="How does this work?" />
+        </div>
+      </div>
+      <button onClick=${dismissBanner} class="text-butter-deep hover:opacity-70 text-xl leading-none" aria-label="Dismiss">×</button>
+    </div>`}
 
     <${Card} className="mb-6">
       <div class="p-4">
@@ -391,11 +412,13 @@ function parseAIResponse(text, entries) {
   return suggestions;
 }
 
-const AI_CAT_STORAGE_KEY = 'finance_ai_key_v1';
-
 function AICategorizeModal({ open, onClose }) {
   const { state, dispatch } = useApp();
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem(AI_CAT_STORAGE_KEY) || '');
+  // Key + provider come from the shared LLM config (same one Settings and the
+  // converter wizard use), so a key saved anywhere is picked up here too.
+  const [cfg, setCfg] = useState(() => getLLMConfig());
+  const { provider, apiKey } = cfg;
+  const providerLabel = LLM_PROVIDERS[provider]?.label || provider;
   const [keyDraft, setKeyDraft] = useState('');
   const [step, setStep] = useState('idle');
   const [statusMsg, setStatusMsg] = useState('');
@@ -424,8 +447,8 @@ function AICategorizeModal({ open, onClose }) {
   const saveKey = () => {
     const k = keyDraft.trim();
     if (!k) return;
-    localStorage.setItem(AI_CAT_STORAGE_KEY, k);
-    setApiKey(k);
+    setLLMConfig({ provider, apiKey: k });
+    setCfg(getLLMConfig());
     setKeyDraft('');
   };
 
@@ -440,26 +463,11 @@ function AICategorizeModal({ open, onClose }) {
         const batch = entries.slice(start, start + BATCH);
         setStatusMsg(`Categorizing ${Math.min(start + BATCH, entries.length)} of ${entries.length} descriptions…`);
         const batchPrompt = buildAIPrompt(batch);
-        const res = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': apiKey,
-            'anthropic-version': '2023-06-01',
-            'anthropic-dangerous-allow-browser': 'true',
-          },
-          body: JSON.stringify({
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: 2048,
-            messages: [{ role: 'user', content: batchPrompt }]
-          })
-        });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error(err.error?.message || `API error ${res.status}`);
-        }
-        const data = await res.json();
-        allSuggestions.push(...parseAIResponse(data.content?.[0]?.text || '', batch));
+        // Categorization is high-volume, so prefer a cheap model: Haiku for
+        // Anthropic; for OpenAI fall back to the provider default.
+        const model = provider === 'anthropic' ? 'claude-haiku-4-5-20251001' : cfg.model;
+        const text = await callLLMText({ provider, apiKey, model, messages: [{ role: 'user', content: batchPrompt }] });
+        allSuggestions.push(...parseAIResponse(text, batch));
       }
       setSuggestions(allSuggestions);
       setAccepted(Object.fromEntries(allSuggestions.map((_, i) => [i, true])));
@@ -513,14 +521,16 @@ function AICategorizeModal({ open, onClose }) {
         ${step === 'error' && html`<div class="p-3 bg-plum-soft border border-plum-line rounded text-plum-deep text-xs">${statusMsg}</div>`}
 
         <div class="border border-rule rounded-lg p-4 space-y-3">
-          <div class="font-medium">Option 1 — Anthropic API key</div>
-          <p class="text-ink-mute text-xs">Runs automatically. Get a key at console.anthropic.com.</p>
-          ${apiKey ? html`<div class="flex gap-2 items-center">
+          <div class="font-medium">Option 1 — ${providerLabel} API key</div>
+          ${apiKey ? html`<div class="space-y-2">
+            <p class="text-ink-mute text-xs">Runs automatically using the key from Settings.</p>
             <${Button} onClick=${runAPI}>Run AI categorization</${Button}>
-            <button class="text-xs text-ink-mute hover:text-ink-2" onClick=${() => { localStorage.removeItem(AI_CAT_STORAGE_KEY); setApiKey(''); }}>Clear key</button>
-          </div>` : html`<div class="flex gap-2">
-            <${Input} type="password" placeholder="sk-ant-..." value=${keyDraft} onChange=${e => setKeyDraft(e.target.value)} onKeyDown=${e => e.key === 'Enter' && saveKey()} className="flex-1 font-mono text-xs" />
-            <${Button} onClick=${saveKey} disabled=${!keyDraft.trim()}>Save & run</${Button}>
+          </div>` : html`<div class="space-y-2">
+            <p class="text-ink-mute text-xs">Add a key to run automatically. Manage it anytime in Settings.</p>
+            <div class="flex gap-2">
+              <${Input} type="password" placeholder=${provider === 'openai' ? 'sk-...' : 'sk-ant-...'} value=${keyDraft} onChange=${e => setKeyDraft(e.target.value)} onKeyDown=${e => e.key === 'Enter' && saveKey()} className="flex-1 font-mono text-xs" />
+              <${Button} onClick=${saveKey} disabled=${!keyDraft.trim()}>Save & run</${Button}>
+            </div>
           </div>`}
         </div>
 

@@ -146,6 +146,41 @@ async function callOpenAI({ apiKey, model, messages, signal }) {
   return { spec: parsed.spec, text: parsed.explanation || '' };
 }
 
+// Free-text completion (no structured-output tool), for tasks like AI categorization
+// that expect the model to return raw JSON text. Reuses the same per-provider
+// browser-direct headers and error handling as callLLM.
+export async function callLLMText({ provider, apiKey, model, messages, signal, maxTokens = 2048 }) {
+  if (!apiKey) throw new Error('No API key set for ' + provider);
+  if (provider === 'anthropic') {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      signal,
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({ model: model || LLM_PROVIDERS.anthropic.defaultModel, max_tokens: maxTokens, messages }),
+    });
+    if (!res.ok) throw new Error(await llmErrorText(res));
+    const data = await res.json();
+    return (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
+  }
+  if (provider === 'openai') {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      signal,
+      headers: { 'content-type': 'application/json', 'authorization': 'Bearer ' + apiKey },
+      body: JSON.stringify({ model: model || LLM_PROVIDERS.openai.defaultModel, messages }),
+    });
+    if (!res.ok) throw new Error(await llmErrorText(res));
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content || '';
+  }
+  throw new Error('Unknown provider: ' + provider);
+}
+
 async function llmErrorText(res) {
   let detail = '';
   try { const j = await res.json(); detail = j.error?.message || JSON.stringify(j.error || j); }
