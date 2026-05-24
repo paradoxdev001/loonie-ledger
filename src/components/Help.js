@@ -124,7 +124,7 @@ export function HelpView() {
           <${Section} id="privacy" title="Privacy & your data">
             <${P}>Everything you import stays inside this browser. Your transactions are never sent
               to any server. There is exactly one optional exception, described in
-              <${Jump} onJump=${jump} id="ai-converters">AI converter setup</${Jump}>.</${P}>
+              ${' '}<${Jump} onJump=${jump} id="ai-converters">AI converter setup</${Jump}>.</${P}>
             <${Sub}>Where your data lives</${Sub}>
             <${P}>On startup the app picks the best available storage: <${C}>IndexedDB</${C}> first,
               then <${C}>localStorage</${C}>, then in-memory as a last resort. The whole database is
@@ -146,8 +146,8 @@ export function HelpView() {
               and an <strong>account name</strong> (e.g. "TD Visa — Joint"). Loonie Ledger then shows
               the converters that match. Choose one and it parses the document into a review screen.
               If no converter matches, you can build one — see
-              <${Jump} onJump=${jump} id="converters">Converters</${Jump}> and
-              <${Jump} onJump=${jump} id="ai-converters">AI converter setup</${Jump}>.</${P}>
+              ${' '}<${Jump} onJump=${jump} id="converters">Converters</${Jump}> and
+              ${' '}<${Jump} onJump=${jump} id="ai-converters">AI converter setup</${Jump}>.</${P}>
             <${Sub}>Filename reuse</${Sub}>
             <${P}>When you drop a file whose name matches a previous upload, Loonie Ledger offers to
               reuse the same converter and account in one click. Matching ignores dates and statement
@@ -167,9 +167,9 @@ export function HelpView() {
               rules; the same file always produces the same transactions.</${P}>
             <${Sub}>Built-in vs. custom</${Sub}>
             <${P}>Loonie Ledger ships with built-in converters for the banks Canadians actually use —
-              <strong>TD, RBC, Amex, and BMO</strong> (chequing, credit card, and statement formats),
+              ${' '}<strong>TD, RBC, Amex, and BMO</strong> (chequing, credit card, and statement formats),
               plus a generic CSV fallback. Converters you create or import are marked
-              <strong>Custom</strong>. Manage all of them in the <strong>Converters</strong> view, where
+              ${' '}<strong>Custom</strong>. Manage all of them in the <strong>Converters</strong> view, where
               you can view/edit the spec, see how many imports used it, and export or delete it.
               Deleting a converter never affects already-imported transactions.</${P}>
             <${Sub}>How a converter is described</${Sub}>
@@ -207,7 +207,7 @@ export function HelpView() {
           <${Section} id="ai-converters" title="AI converter setup">
             <${P}>This is the feature that lets Loonie Ledger handle <em>any</em> bank, not just the
               built-in ones. When no converter exists for your statement, choose
-              <strong>✨ Set up with AI</strong> and an assistant will author a converter for you by
+              ${' '}<strong>✨ Set up with AI</strong> and an assistant will author a converter for you by
               looking at the structure of your document — then hand you a normal, deterministic
               converter that's reused automatically from then on.</${P}>
 
@@ -224,11 +224,11 @@ export function HelpView() {
 
             <${Sub}>Bring your own key</${Sub}>
             <${P}>You supply an API key from <strong>Anthropic (Claude)</strong> or
-              <strong>OpenAI (GPT)</strong>. The key is stored only in this browser's local storage, sent
+              ${' '}<strong>OpenAI (GPT)</strong>. The key is stored only in this browser's local storage, sent
               directly to that provider, and excluded from backup exports.</${P}>
             <${Note}>Because this page loads libraries from public CDNs, treat the key as exposed to the
               page — use a key you can rotate, and never share it. You can manage or clear it any time in
-              <strong>Settings → AI assistant</strong>.</${Note}>
+              ${' '}<strong>Settings → AI assistant</strong>.</${Note}>
 
             <${Sub}>How the wizard works</${Sub}>
             <${UL}>
@@ -257,7 +257,7 @@ export function HelpView() {
             <${Sub}>Duplicates</${Sub}>
             <${P}>Every transaction gets a fingerprint from its date, amount, type, description, and
               account. Rows that match something already imported are flagged as
-              <strong>duplicates</strong> and unchecked automatically, so re-importing the same statement
+              ${' '}<strong>duplicates</strong> and unchecked automatically, so re-importing the same statement
               twice never creates doubles.</${P}>
             <${Sub}>Filters & warnings</${Sub}>
             <${P}>Filter the list to <em>Duplicates</em>, <em>Excluded</em>, or <em>Issues only</em>. If
@@ -273,7 +273,7 @@ export function HelpView() {
               <li><strong>Inline category</strong> — change a transaction's category right in the table.</li>
               <li><strong>Exclude</strong> — tick a row to keep it out of reports without deleting it.</li>
               <li><strong>+rule</strong> — turn a transaction into a reusable category rule (see
-                <${Jump} onJump=${jump} id="categorization">Categories & rules</${Jump}>).</li>
+                ${' '}<${Jump} onJump=${jump} id="categorization">Categories & rules</${Jump}>).</li>
               <li><strong>Source ⓘ</strong> — see which statement a transaction came from.</li>
               <li><strong>🔁</strong> marks charges detected as recurring.</li>
               <li><strong>Export CSV</strong> downloads the currently filtered rows.</li>
@@ -282,7 +282,7 @@ export function HelpView() {
 
           <${Section} id="categorization" title="Categories & rules">
             <${P}>Each transaction has a <strong>type</strong> (expense, income, transfer, refund, or
-              CC payment) inferred from its amount sign and account, and a <strong>category</strong>
+              CC payment) inferred from its amount sign and account, and a <strong>category</strong>${' '}
               (Groceries, Dining, Subscriptions, …).</${P}>
             <${Sub}>Automatic categorization</${Sub}>
             <${P}>On import, descriptions are matched against a built-in library of Canadian merchant
@@ -290,9 +290,9 @@ export function HelpView() {
               Anything unmatched lands in <em>Other</em>.</${P}>
             <${Sub}>Your own rules</${Sub}>
             <${P}>Create rules from the <strong>+rule</strong> button on any transaction. A rule has a
-              <strong>pattern</strong>, a <strong>match type</strong> (<${C}>contains</${C}>,
-              <${C}>startswith</${C}>, or <${C}>regex</${C}>), a target category, and a
-              <strong>priority</strong> (higher runs first). You can apply a new rule to all existing
+              ${' '}<strong>pattern</strong>, a <strong>match type</strong> (<${C}>contains</${C}>,
+              ${' '}<${C}>startswith</${C}>, or <${C}>regex</${C}>), a target category, and a
+              ${' '}<strong>priority</strong> (higher runs first). You can apply a new rule to all existing
               transactions at once.</${P}>
             <${Sub}>AI Suggest</${Sub}>
             <${P}>When transactions are uncategorized, the <strong>AI Suggest</strong> button offers
@@ -310,7 +310,7 @@ export function HelpView() {
             <${P}>Reports summarize spending over a date range you control with quick presets (this
               month, last month, 3/6 months, this/last year) or custom dates. You can scope to one
               account and choose whether to <strong>exclude transfers</strong> and
-              <strong>CC payments</strong> so they don't distort spending totals.</${P}>
+              ${' '}<strong>CC payments</strong> so they don't distort spending totals.</${P}>
             <${UL}>
               <li><strong>Summary tiles</strong> — total expenses, total income, net, and average per month.</li>
               <li><strong>Monthly expenses</strong> — expenses vs. income per month.</li>
@@ -369,7 +369,7 @@ export function HelpView() {
             <${P}>No. Duplicate detection (see <${Jump} onJump=${jump} id="review">Reviewing</${Jump}>)
               fingerprints each transaction and skips ones you already have.</${P}>
             <${Sub}>The footer says I'm working in memory.</${Sub}>
-            <${P}>Your browser blocked persistent storage. Use <strong>Settings → Export backup</strong>
+            <${P}>Your browser blocked persistent storage. Use <strong>Settings → Export backup</strong>${' '}
               before closing the tab so you don't lose your data.</${P}>
           </${Section}>
 
