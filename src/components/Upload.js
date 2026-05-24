@@ -100,12 +100,12 @@ function DropZone({ onFiles, multiple = false }) {
     onClick=${() => inputRef.current?.click()}
     class=${classNames(
       'border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors',
-      drag ? 'border-brand-500 bg-brand-50' : 'border-slate-300 bg-slate-50 hover:bg-slate-100'
+      drag ? 'border-brand-500 bg-paper-3' : 'border-rule bg-paper hover:bg-paper-3'
     )}
   >
     <div class="text-4xl mb-3">📄</div>
-    <div class="font-medium text-slate-900">Drop a file here or click to browse</div>
-    <div class="text-xs text-slate-500 mt-1">Supports CSV and PDF. Bank statements, credit-card statements, exports.</div>
+    <div class="font-medium text-ink">Drop a file here or click to browse</div>
+    <div class="text-xs text-ink-mute mt-1">Supports CSV and PDF. Bank statements, credit-card statements, exports.</div>
     <input
       ref=${inputRef}
       type="file"
@@ -131,12 +131,12 @@ function ConverterMatchPanel({ file, format, institution, accountType, onConvert
   const list = exact.length ? exact : candidates;
 
   if (!institution || !format) {
-    return html`<div class="text-sm text-slate-500">Pick an institution to see matching converters.</div>`;
+    return html`<div class="text-sm text-ink-mute">Pick an institution to see matching converters.</div>`;
   }
   if (list.length === 0) {
-    return html`<div class="rounded-lg bg-amber-50 border border-amber-200 p-4">
-      <div class="text-sm font-medium text-amber-900">No converter exists for ${institution} (${format.toUpperCase()})</div>
-      <p class="text-xs text-amber-800 mt-1">
+    return html`<div class="rounded-lg bg-butter-soft border border-butter-line p-4">
+      <div class="text-sm font-medium text-butter-deep">No converter exists for ${institution} (${format.toUpperCase()})</div>
+      <p class="text-xs text-butter-deep mt-1">
         Let AI analyze the file and build a reusable converter for you, or set one up manually. Once saved, future uploads from ${institution} will skip this step.
       </p>
       <div class="mt-3 flex flex-wrap gap-2">
@@ -146,23 +146,23 @@ function ConverterMatchPanel({ file, format, institution, accountType, onConvert
     </div>`;
   }
   return html`<div class="space-y-2">
-    <div class="text-xs text-slate-500">Choose a converter for this document:</div>
+    <div class="text-xs text-ink-mute">Choose a converter for this document:</div>
     ${list.map(c => html`<button
       key=${c.id}
       onClick=${() => onConverterChosen(c)}
-      class="w-full text-left rounded-lg border border-slate-200 hover:border-brand-500 hover:bg-brand-50 p-3 transition-colors"
+      class="w-full text-left rounded-lg border border-rule hover:border-brand-500 hover:bg-paper-3 p-3 transition-colors"
     >
       <div class="flex items-start justify-between gap-2">
         <div>
-          <div class="text-sm font-medium text-slate-900">${c.name}</div>
-          <div class="text-xs text-slate-500 mt-0.5">${c.institution} · ${c.format.toUpperCase()} · ${ACCOUNT_TYPE_LABEL[c.account_type] || 'Any'}</div>
+          <div class="text-sm font-medium text-ink">${c.name}</div>
+          <div class="text-xs text-ink-mute mt-0.5">${c.institution} · ${c.format.toUpperCase()} · ${ACCOUNT_TYPE_LABEL[c.account_type] || 'Any'}</div>
         </div>
         ${c.is_builtin ? html`<${Badge} color="blue">Built-in</${Badge}>` : html`<${Badge} color="violet">Custom</${Badge}>`}
       </div>
     </button>`)}
-    <div class="text-xs text-slate-500 pt-1">
-      None of these match?${' '}<button onClick=${onNeedAIConverter} class="text-brand-600 hover:underline">Set up with AI ✨</button>
-      ${' '}or <button onClick=${onNeedConverter} class="text-brand-600 hover:underline">bootstrap manually →</button>
+    <div class="text-xs text-ink-mute pt-1">
+      None of these match?${' '}<button onClick=${onNeedAIConverter} class="text-maple-deep hover:underline">Set up with AI ✨</button>
+      ${' '}or <button onClick=${onNeedConverter} class="text-maple-deep hover:underline">bootstrap manually →</button>
     </div>
   </div>`;
 }
@@ -302,22 +302,22 @@ export function UploadView() {
       description="Drop a CSV or PDF — drop several at once to auto-import recognized files in one shot. We'll detect the format, find a matching converter, and parse transactions deterministically."
     />
 
-    ${showBatchSummary && html`<div class="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+    ${showBatchSummary && html`<div class="mb-6 p-4 bg-paper-3 border border-rule rounded-lg">
       <div class="flex items-start justify-between gap-3">
         <div class="text-sm">
-          <div class="font-medium text-emerald-900">Batch upload complete</div>
-          <div class="mt-1 text-emerald-800">
+          <div class="font-medium text-forest">Batch upload complete</div>
+          <div class="mt-1 text-forest">
             ${state.batchStats.autoImported > 0 && html`<span><span class="font-semibold">${state.batchStats.autoImported}</span> auto-imported</span>`}
             ${state.batchStats.autoImported > 0 && (state.batchStats.queuedForReview > 0 || state.batchStats.skippedNoHint > 0 || state.batchStats.errors > 0) && html`<span> · </span>`}
             ${state.batchStats.queuedForReview > 0 && html`<span><span class="font-semibold">${state.batchStats.queuedForReview}</span> reviewed</span>`}
             ${state.batchStats.queuedForReview > 0 && (state.batchStats.skippedNoHint > 0 || state.batchStats.errors > 0) && html`<span> · </span>`}
             ${state.batchStats.skippedNoHint > 0 && html`<span><span class="font-semibold">${state.batchStats.skippedNoHint}</span> unrecognized</span>`}
             ${state.batchStats.skippedNoHint > 0 && state.batchStats.errors > 0 && html`<span> · </span>`}
-            ${state.batchStats.errors > 0 && html`<span><span class="font-semibold text-red-700">${state.batchStats.errors}</span> failed</span>`}
+            ${state.batchStats.errors > 0 && html`<span><span class="font-semibold text-plum">${state.batchStats.errors}</span> failed</span>`}
           </div>
-          ${state.batchStats.skippedNames?.length > 0 && html`<details class="mt-2 text-xs text-emerald-800">
+          ${state.batchStats.skippedNames?.length > 0 && html`<details class="mt-2 text-xs text-forest">
             <summary class="cursor-pointer hover:underline">Skipped files (drop individually to set up converter)</summary>
-            <ul class="mt-1 ml-4 list-disc font-mono text-slate-700">
+            <ul class="mt-1 ml-4 list-disc font-mono text-ink-2">
               ${state.batchStats.skippedNames.map(n => html`<li key=${n}>${n}</li>`)}
             </ul>
           </details>`}
@@ -338,16 +338,16 @@ export function UploadView() {
               />
               <div class="p-5">
                 <${Label}>Preview</${Label}>
-                <pre class="mt-1 text-xs bg-slate-50 border border-slate-200 rounded p-3 max-h-48 overflow-auto scrollbar-thin font-mono whitespace-pre-wrap">${previewText || '(empty)'}</pre>
+                <pre class="mt-1 text-xs bg-paper border border-rule rounded p-3 max-h-48 overflow-auto scrollbar-thin font-mono whitespace-pre-wrap">${previewText || '(empty)'}</pre>
               </div>
             </${Card}>`}
 
         ${file && reuseHint && html`<${Card}>
-          <div class="p-5 border-l-4 border-emerald-500 bg-emerald-50 rounded-r-lg">
-            <div class="text-sm font-medium text-emerald-900">
+          <div class="p-5 border-l-4 border-maple bg-paper-3 rounded-r-lg">
+            <div class="text-sm font-medium text-forest">
               Matches a previous upload — reuse <span class="font-semibold">${reuseHint.converter.name}</span>?
             </div>
-            <div class="text-xs text-emerald-800 mt-1">
+            <div class="text-xs text-forest mt-1">
               Filename matches <span class="font-mono">${reuseHint.doc.filename}</span>
               ${reuseHint.account ? html`<span> · account <span class="font-medium">${reuseHint.account.account_name}</span></span>` : null}
               ${reuseHint.doc.uploaded_at ? html`<span> · last used ${new Date(reuseHint.doc.uploaded_at).toLocaleDateString()}</span>` : null}
@@ -433,7 +433,7 @@ export function UploadView() {
       }}
     />
 
-    ${busy && html`<div class="fixed inset-0 bg-slate-900/30 z-40 flex items-center justify-center"><div class="bg-white rounded-lg px-6 py-4 shadow-lg">Parsing…</div></div>`}
+    ${busy && html`<div class="fixed inset-0 z-40 flex items-center justify-center" style=${{ background: 'rgba(22,24,31,0.45)' }}><div class="bg-paper-2 rounded-lg px-6 py-4 shadow-lg">Parsing…</div></div>`}
   </${PageContainer}>`;
 }
 
@@ -442,11 +442,11 @@ function RecentUploads({ recent }) {
     <${CardHeader} title="Recent uploads" />
     <div class="p-3">
       ${recent.length === 0
-        ? html`<div class="text-xs text-slate-500 px-2 py-3">No uploads yet.</div>`
-        : recent.map(d => html`<div key=${d.id} class="flex items-center justify-between py-2 px-2 hover:bg-slate-50 rounded">
+        ? html`<div class="text-xs text-ink-mute px-2 py-3">No uploads yet.</div>`
+        : recent.map(d => html`<div key=${d.id} class="flex items-center justify-between py-2 px-2 hover:bg-paper rounded">
             <div class="min-w-0">
               <div class="text-sm font-medium truncate">${d.filename}</div>
-              <div class="text-xs text-slate-500">
+              <div class="text-xs text-ink-mute">
                 ${d.institution || '—'} · ${d.account_name || '—'} · ${new Date(d.uploaded_at).toLocaleDateString()}
               </div>
             </div>
@@ -463,9 +463,9 @@ function BuiltInsCallout() {
   return html`<${Card}>
     <${CardHeader} title="Built-in converters" subtitle=${`${list.length} ready to use`} />
     <div class="p-3 space-y-1">
-      ${list.map(c => html`<div key=${c.id} class="text-xs px-2 py-1.5 rounded hover:bg-slate-50">
-        <div class="font-medium text-slate-800">${c.name}</div>
-        <div class="text-slate-500">${c.institution} · ${c.format.toUpperCase()}</div>
+      ${list.map(c => html`<div key=${c.id} class="text-xs px-2 py-1.5 rounded hover:bg-paper">
+        <div class="font-medium text-ink">${c.name}</div>
+        <div class="text-ink-mute">${c.institution} · ${c.format.toUpperCase()}</div>
       </div>`)}
     </div>
   </${Card}>`;

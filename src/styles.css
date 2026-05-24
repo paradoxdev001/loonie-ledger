@@ -1,0 +1,93 @@
+/* ============================================================
+   Loonie Ledger — design tokens
+   Edit the :root block to retheme the entire app.
+   ============================================================ */
+
+:root {
+  --paper:    #EDE6D4;  /* body — deepened so the warm base actually reads */
+  --paper-2:  #F6F1E4;  /* elevated surfaces (cards, inputs, modals) — now LIGHTER than body so they lift */
+  --paper-3:  #E2D9C2;  /* recessed / hover / footer — one step darker than body */
+  --ink:      #16181F;
+  --ink-2:    #2B2E38;
+  --ink-mute: #6B6A60;
+  --rule:     rgba(22,24,31,0.14);
+  --rule-soft:rgba(22,24,31,0.08);
+
+  --maple:      oklch(0.70 0.15 162);  /* emerald — primary accent */
+  --maple-deep: oklch(0.50 0.13 162);  /* deep emerald */
+  --forest:     oklch(0.42 0.10 162);  /* darkest emerald — positive amounts */
+  --sky:        oklch(0.72 0.10 230);  /* cool blue */
+
+  --plum:       oklch(0.55 0.16 28);   /* coral — negative amounts, danger, errors */
+  --plum-deep:  oklch(0.45 0.16 28);   /* darker coral — hover + text on a plum tint */
+  --plum-soft:  oklch(0.93 0.045 28);  /* pale coral wash — error callout backgrounds */
+  --plum-line:  oklch(0.85 0.075 28);  /* coral border */
+
+  --butter:     oklch(0.84 0.13 92);   /* warm yellow — warning accent */
+  --butter-deep:oklch(0.50 0.09 80);   /* amber-brown — text on a butter tint */
+  --butter-soft:oklch(0.94 0.055 92);  /* pale butter wash — warning callout backgrounds */
+  --butter-line:oklch(0.87 0.10 92);   /* butter border */
+}
+
+[data-mode="dark"] {
+  --paper:    #14130E;
+  --paper-2:  #1B1A14;
+  --paper-3:  #25231B;
+  --ink:      #F2EBD6;
+  --ink-2:    #E3DAC0;
+  --ink-mute: #8D8975;
+  --rule:     rgba(242,235,214,0.16);
+  --rule-soft:rgba(242,235,214,0.08);
+
+  /* Darkened tints so callouts read as muted washes, not bright boxes */
+  --plum-deep:  oklch(0.72 0.15 28);
+  --plum-soft:  oklch(0.30 0.07 28);
+  --plum-line:  oklch(0.42 0.10 28);
+  --butter-deep:oklch(0.86 0.11 92);
+  --butter-soft:oklch(0.30 0.05 80);
+  --butter-line:oklch(0.42 0.08 85);
+}
+
+/* Text selection */
+::selection { background: var(--maple); color: var(--paper); }
+
+/* Native form controls (date-picker popup, checkboxes, radios) follow the brand
+   accent + theme instead of the OS blue. accent-color tints the selected day in
+   the calendar popup; color-scheme makes the popup itself render light/dark. */
+:root              { color-scheme: light; }
+[data-mode="dark"] { color-scheme: dark; }
+input { accent-color: var(--maple); }
+
+/* Subtle paper grain — sits behind all content */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.4;
+  background-image: radial-gradient(rgba(22,24,31,0.06) 1px, transparent 1px);
+  background-size: 3px 3px;
+}
+
+/* Ensure app content renders above the grain */
+#root { position: relative; z-index: 1; }
+
+/* Coin brand-mark used in the header */
+.brand-mark {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--maple);
+  box-shadow: inset 0 0 0 2px var(--paper), 0 0 0 1.5px var(--ink);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.brand-mark::after {
+  content: '';
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--paper);
+}

@@ -197,49 +197,49 @@ function ReportControls({ from, setFrom, to, setTo, excludeTransfers, setExclude
     onClick=${() => { setFrom(preset.from); setTo(preset.to); }}
     class=${`px-3 py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap focus:outline-none ${
       activeLabel === preset.label
-        ? 'bg-emerald-600 text-white shadow-sm'
-        : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-800'
+        ? 'bg-maple text-ink shadow-sm'
+        : 'bg-paper-3 text-ink-2 hover:bg-paper-3 hover:text-ink'
     }`}
   >${preset.label}</button>`;
 
   return html`<${Card} className="mb-6">
-    <div class="px-4 pt-3 pb-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-slate-100">
+    <div class="px-4 pt-3 pb-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-rule-soft">
       <div class="flex items-center gap-1.5 flex-wrap">
-        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wide mr-0.5">Months</span>
+        <span class="text-xs font-semibold text-ink-mute uppercase tracking-wide mr-0.5">Months</span>
         ${presets.months.map(p => html`<${PresetPill} key=${p.label} preset=${p} />`)}
       </div>
-      <div class="w-px h-5 bg-slate-200 hidden sm:block self-center" />
+      <div class="w-px h-5 bg-paper-3 hidden sm:block self-center" />
       <div class="flex items-center gap-1.5 flex-wrap">
-        <span class="text-xs font-semibold text-slate-400 uppercase tracking-wide mr-0.5">Years</span>
+        <span class="text-xs font-semibold text-ink-mute uppercase tracking-wide mr-0.5">Years</span>
         ${presets.years.map(p => html`<${PresetPill} key=${p.label} preset=${p} />`)}
       </div>
     </div>
     <div class="p-4 grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
       <div>
-        <label class="block text-xs font-medium text-slate-700 mb-1">From</label>
+        <label class="block text-xs font-medium text-ink-2 mb-1">From</label>
         <input type="date" value=${from} onChange=${e => setFrom(e.target.value)}
-          class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none" />
+          class="block w-full rounded-lg border border-rule bg-paper-2 px-3 py-2 text-sm focus:border-maple focus:ring-1 focus:ring-maple outline-none" />
       </div>
       <div>
-        <label class="block text-xs font-medium text-slate-700 mb-1">To</label>
+        <label class="block text-xs font-medium text-ink-2 mb-1">To</label>
         <input type="date" value=${to} onChange=${e => setTo(e.target.value)}
-          class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none" />
+          class="block w-full rounded-lg border border-rule bg-paper-2 px-3 py-2 text-sm focus:border-maple focus:ring-1 focus:ring-maple outline-none" />
       </div>
       <div>
-        <label class="block text-xs font-medium text-slate-700 mb-1">Account</label>
+        <label class="block text-xs font-medium text-ink-2 mb-1">Account</label>
         <select value=${accountFilter} onChange=${e => setAccountFilter(e.target.value)}
-          class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none">
+          class="block w-full rounded-lg border border-rule bg-paper-2 px-3 py-2 text-sm focus:border-maple focus:ring-1 focus:ring-maple outline-none">
           <option value="">All accounts</option>
           ${accounts.map(a => html`<option key=${a.id} value=${a.id}>${a.institution} · ${a.account_name}</option>`)}
         </select>
       </div>
       <div class="md:col-span-2 flex items-center gap-4 pb-2">
         <label class="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked=${excludeTransfers} onChange=${e => setExcludeTransfers(e.target.checked)} class="rounded border-slate-300" />
+          <input type="checkbox" checked=${excludeTransfers} onChange=${e => setExcludeTransfers(e.target.checked)} class="rounded border-rule" />
           Exclude transfers
         </label>
         <label class="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked=${excludePayments} onChange=${e => setExcludePayments(e.target.checked)} class="rounded border-slate-300" />
+          <input type="checkbox" checked=${excludePayments} onChange=${e => setExcludePayments(e.target.checked)} class="rounded border-rule" />
           Exclude CC payments
         </label>
       </div>
@@ -332,7 +332,7 @@ function CategoryBreakdownChart({ expenses }) {
       }
     });
   }, [data]);
-  if (Object.keys(data).length === 0) return html`<div class="text-sm text-slate-500 py-10 text-center">No expenses in range.</div>`;
+  if (Object.keys(data).length === 0) return html`<div class="text-sm text-ink-mute py-10 text-center">No expenses in range.</div>`;
   return html`<div class="relative h-72"><canvas ref=${ref} /></div>`;
 }
 
@@ -363,36 +363,36 @@ function TopMerchantsTable({ expenses }) {
 
   return html`<div class="overflow-auto">
     <table class="w-full text-sm">
-      <thead class="bg-slate-50 text-slate-600 text-xs uppercase tracking-wide">
+      <thead class="bg-paper text-ink-2 text-xs uppercase tracking-wide">
         <tr>
           <th class="text-left px-4 py-2">Merchant</th>
           <th class="text-right px-4 py-2">Visits</th>
           <th class="text-right px-4 py-2">Total</th>
         </tr>
       </thead>
-      <tbody class="divide-y divide-slate-200">
+      <tbody class="divide-y divide-rule">
         ${rows.map(r => {
           const isOpen = expanded.has(r.name);
           const sortedTxns = r.txns.slice().sort((a, b) =>
             (b.transaction_date || '').localeCompare(a.transaction_date || ''));
           return html`<${window.React.Fragment} key=${r.name}>
             <tr
-              class="hover:bg-slate-50 cursor-pointer"
+              class="hover:bg-paper cursor-pointer"
               onClick=${() => toggle(r.name)}
             >
               <td class="px-4 py-2 max-w-[280px]">
                 <div class="flex items-center gap-2">
-                  <span class="text-slate-400 text-xs w-3 inline-block">${isOpen ? '▾' : '▸'}</span>
+                  <span class="text-ink-mute text-xs w-3 inline-block">${isOpen ? '▾' : '▸'}</span>
                   <span class="truncate">${r.name}</span>
                 </div>
               </td>
               <td class="px-4 py-2 text-right font-mono">${r.count}</td>
-              <td class="px-4 py-2 text-right font-mono text-red-600">${formatMoney(r.total)}</td>
+              <td class="px-4 py-2 text-right font-mono text-plum">${formatMoney(r.total)}</td>
             </tr>
-            ${isOpen && html`<tr class="bg-slate-50">
+            ${isOpen && html`<tr class="bg-paper">
               <td colspan="3" class="px-4 py-3">
                 <table class="w-full text-xs">
-                  <thead class="text-slate-500 uppercase tracking-wide">
+                  <thead class="text-ink-mute uppercase tracking-wide">
                     <tr>
                       <th class="text-left px-2 py-1 font-medium">Date</th>
                       <th class="text-left px-2 py-1 font-medium">Description</th>
@@ -401,12 +401,12 @@ function TopMerchantsTable({ expenses }) {
                       <th class="text-center px-2 py-1 font-medium w-10">Source</th>
                     </tr>
                   </thead>
-                  <tbody class="divide-y divide-slate-200">
+                  <tbody class="divide-y divide-rule">
                     ${sortedTxns.map(t => html`<tr key=${t.id}>
-                      <td class="px-2 py-1 font-mono whitespace-nowrap text-slate-700">${formatDateDisplay(t.transaction_date)}</td>
-                      <td class="px-2 py-1 max-w-[280px] truncate text-slate-700" title=${t.description}>${t.description}</td>
-                      <td class="px-2 py-1 text-slate-500">${t.institution || ''}${t.account_name ? ` · ${t.account_name}` : ''}</td>
-                      <td class="px-2 py-1 text-right font-mono text-red-600">${formatMoney(Math.abs(t.amount))}</td>
+                      <td class="px-2 py-1 font-mono whitespace-nowrap text-ink-2">${formatDateDisplay(t.transaction_date)}</td>
+                      <td class="px-2 py-1 max-w-[280px] truncate text-ink-2" title=${t.description}>${t.description}</td>
+                      <td class="px-2 py-1 text-ink-mute">${t.institution || ''}${t.account_name ? ` · ${t.account_name}` : ''}</td>
+                      <td class="px-2 py-1 text-right font-mono text-plum">${formatMoney(Math.abs(t.amount))}</td>
                       <td class="px-2 py-1 text-center">
                         <${SourceInfoButton} documentId=${t.document_id} />
                       </td>
@@ -419,7 +419,7 @@ function TopMerchantsTable({ expenses }) {
         })}
       </tbody>
     </table>
-    ${rows.length === 0 && html`<div class="py-6 text-center text-sm text-slate-500">No expenses.</div>`}
+    ${rows.length === 0 && html`<div class="py-6 text-center text-sm text-ink-mute">No expenses.</div>`}
   </div>`;
 }
 
@@ -428,14 +428,14 @@ function RecurringChargesTable({ expenses }) {
   const monthlyTotal = recurring.reduce((sum, r) => sum + r.monthly_estimate, 0);
 
   if (recurring.length === 0) {
-    return html`<div class="py-8 text-center text-sm text-slate-500">
+    return html`<div class="py-8 text-center text-sm text-ink-mute">
       No recurring charges detected. Needs ≥3 similar charges from the same merchant, ~25–35 days apart.
     </div>`;
   }
 
   return html`<div class="overflow-auto">
     <table class="w-full text-sm">
-      <thead class="bg-slate-50 text-slate-600 text-xs uppercase tracking-wide">
+      <thead class="bg-paper text-ink-2 text-xs uppercase tracking-wide">
         <tr>
           <th class="text-left px-4 py-2">Merchant</th>
           <th class="text-right px-4 py-2">Typical</th>
@@ -445,8 +445,8 @@ function RecurringChargesTable({ expenses }) {
           <th class="text-right px-4 py-2">Est. monthly</th>
         </tr>
       </thead>
-      <tbody class="divide-y divide-slate-200">
-        ${recurring.map(r => html`<tr key=${r.key} class="hover:bg-slate-50">
+      <tbody class="divide-y divide-rule">
+        ${recurring.map(r => html`<tr key=${r.key} class="hover:bg-paper">
           <td class="px-4 py-2 truncate max-w-[280px]">
             <div class="flex items-center gap-2">
               <span class="text-xs">🔁</span>
@@ -454,16 +454,16 @@ function RecurringChargesTable({ expenses }) {
             </div>
           </td>
           <td class="px-4 py-2 text-right font-mono">${formatMoney(r.typical_amount)}</td>
-          <td class="px-4 py-2 text-right font-mono text-slate-600">${r.cadence_days} d</td>
-          <td class="px-4 py-2 font-mono text-xs text-slate-600">${r.last_seen}</td>
+          <td class="px-4 py-2 text-right font-mono text-ink-2">${r.cadence_days} d</td>
+          <td class="px-4 py-2 font-mono text-xs text-ink-2">${r.last_seen}</td>
           <td class="px-4 py-2 text-right font-mono">${r.occurrences}</td>
-          <td class="px-4 py-2 text-right font-mono text-red-600">${formatMoney(r.monthly_estimate)}</td>
+          <td class="px-4 py-2 text-right font-mono text-plum">${formatMoney(r.monthly_estimate)}</td>
         </tr>`)}
       </tbody>
       <tfoot>
-        <tr class="bg-slate-50 border-t border-slate-200">
-          <td colspan="5" class="px-4 py-2 text-right text-xs uppercase tracking-wide text-slate-600">Estimated monthly recurring spend</td>
-          <td class="px-4 py-2 text-right font-mono font-semibold text-red-600">${formatMoney(monthlyTotal)}</td>
+        <tr class="bg-paper border-t border-rule">
+          <td colspan="5" class="px-4 py-2 text-right text-xs uppercase tracking-wide text-ink-2">Estimated monthly recurring spend</td>
+          <td class="px-4 py-2 text-right font-mono font-semibold text-plum">${formatMoney(monthlyTotal)}</td>
         </tr>
       </tfoot>
     </table>
@@ -487,23 +487,23 @@ function MonthOverMonthTable({ expenses }) {
 
   return html`<div class="overflow-auto">
     <table class="w-full text-sm">
-      <thead class="bg-slate-50 text-slate-600 text-xs uppercase tracking-wide">
+      <thead class="bg-paper text-ink-2 text-xs uppercase tracking-wide">
         <tr>
           <th class="text-left px-4 py-2">Month</th>
           <th class="text-right px-4 py-2">Total</th>
           <th class="text-right px-4 py-2">vs. prev.</th>
         </tr>
       </thead>
-      <tbody class="divide-y divide-slate-200">
+      <tbody class="divide-y divide-rule">
         ${rows.map(r => html`<tr key=${r.month}>
           <td class="px-4 py-2">${monthLabel(r.month)}</td>
           <td class="px-4 py-2 text-right font-mono">${formatMoney(r.total)}</td>
-          <td class=${classNames('px-4 py-2 text-right font-mono text-xs', r.delta == null ? 'text-slate-400' : r.delta > 0 ? 'text-red-600' : 'text-emerald-600')}>
+          <td class=${classNames('px-4 py-2 text-right font-mono text-xs', r.delta == null ? 'text-ink-mute' : r.delta > 0 ? 'text-plum' : 'text-forest')}>
             ${r.delta == null ? '—' : `${r.delta > 0 ? '+' : ''}${r.delta.toFixed(1)}%`}
           </td>
         </tr>`)}
       </tbody>
     </table>
-    ${rows.length === 0 && html`<div class="py-6 text-center text-sm text-slate-500">No data.</div>`}
+    ${rows.length === 0 && html`<div class="py-6 text-center text-sm text-ink-mute">No data.</div>`}
   </div>`;
 }

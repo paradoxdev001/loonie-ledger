@@ -104,14 +104,14 @@ export function BootstrapWizard({ open, onClose, file, format, previewText, defa
       </${Button}>
     </${Fragment}>`}
   >
-    <div class="text-sm text-slate-600 mb-4">
+    <div class="text-sm text-ink-2 mb-4">
       We've analyzed the document and proposed a converter. Review the mapping, tweak as needed, then save. This converter will be reused automatically for all future uploads from this institution.
     </div>
 
     <${ConverterMetaForm} meta=${meta} setMeta=${setMeta} />
 
-    ${stage === 'analyzing' && html`<div class="mt-6 text-sm text-slate-500">Analyzing document…</div>`}
-    ${stage === 'error' && html`<div class="mt-6 text-sm text-red-600">Could not analyze this document. Try a different format or set the spec manually.</div>`}
+    ${stage === 'analyzing' && html`<div class="mt-6 text-sm text-ink-mute">Analyzing document…</div>`}
+    ${stage === 'error' && html`<div class="mt-6 text-sm text-plum">Could not analyze this document. Try a different format or set the spec manually.</div>`}
 
     ${stage === 'csv-editor' && spec && html`<${CSVConverterEditor} spec=${spec} setSpec=${setSpec} ctx=${csvContext} />`}
     ${stage === 'pdf-editor' && spec && html`<${PDFConverterEditor} spec=${spec} setSpec=${setSpec} previewText=${previewText} />`}
@@ -287,7 +287,7 @@ function PDFConverterEditor({ spec, setSpec, previewText }) {
         value=${spec.line_regex}
         onChange=${e => set('line_regex', e.target.value)}
       />
-      <p class="text-xs text-slate-500 mt-1">Should match a single transaction line. Use capture groups for date / description / amount.</p>
+      <p class="text-xs text-ink-mute mt-1">Should match a single transaction line. Use capture groups for date / description / amount.</p>
     </div>
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
       <div>
@@ -331,8 +331,8 @@ function PDFConverterEditor({ spec, setSpec, previewText }) {
       </div>
     </div>
     <details>
-      <summary class="text-xs text-brand-600 hover:underline cursor-pointer">Show extracted text</summary>
-      <pre class="mt-2 text-xs bg-slate-50 border border-slate-200 rounded p-3 max-h-48 overflow-auto scrollbar-thin font-mono whitespace-pre-wrap">${previewText || ''}</pre>
+      <summary class="text-xs text-maple-deep hover:underline cursor-pointer">Show extracted text</summary>
+      <pre class="mt-2 text-xs bg-paper border border-rule rounded p-3 max-h-48 overflow-auto scrollbar-thin font-mono whitespace-pre-wrap">${previewText || ''}</pre>
     </details>
   </div>`;
 }
@@ -353,14 +353,14 @@ export function LivePreview({ file, spec, format }) {
     return () => { cancel = true; };
   }, [file, JSON.stringify(spec), format]);
 
-  if (preview.err) return html`<div class="text-sm text-red-600">${preview.err}</div>`;
-  if (preview.rows.length === 0) return html`<div class="text-sm text-slate-500">No transactions matched yet. Adjust the spec above.</div>`;
+  if (preview.err) return html`<div class="text-sm text-plum">${preview.err}</div>`;
+  if (preview.rows.length === 0) return html`<div class="text-sm text-ink-mute">No transactions matched yet. Adjust the spec above.</div>`;
 
   return html`<div>
-    <div class="text-xs text-slate-500 mb-2">Showing 5 of ${preview.total}.</div>
-    <div class="border border-slate-200 rounded-lg overflow-hidden">
+    <div class="text-xs text-ink-mute mb-2">Showing 5 of ${preview.total}.</div>
+    <div class="border border-rule rounded-lg overflow-hidden">
       <table class="w-full text-xs">
-        <thead class="bg-slate-50 text-slate-600">
+        <thead class="bg-paper text-ink-2">
           <tr>
             <th class="text-left px-3 py-2">Date</th>
             <th class="text-left px-3 py-2">Description</th>
@@ -368,11 +368,11 @@ export function LivePreview({ file, spec, format }) {
             <th class="text-left px-3 py-2">Type</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-slate-200">
+        <tbody class="divide-y divide-rule">
           ${preview.rows.map((t, i) => html`<tr key=${i}>
             <td class="px-3 py-2 font-mono">${t.transaction_date}</td>
             <td class="px-3 py-2 truncate max-w-[400px]">${t.description}</td>
-            <td class=${classNames('px-3 py-2 text-right font-mono', t.signed_amount < 0 ? 'text-red-600' : 'text-emerald-600')}>
+            <td class=${classNames('px-3 py-2 text-right font-mono', t.signed_amount < 0 ? 'text-plum' : 'text-forest')}>
               ${formatMoney(t.signed_amount)}
             </td>
             <td class="px-3 py-2">${TXN_TYPE_LABEL[t.transaction_type]}</td>
@@ -404,7 +404,7 @@ export function APIKeyModal({ open, onClose, onSaved }) {
       <${Button} onClick=${save} disabled=${!key.trim()}>Save key</${Button}>
     </${Fragment}>`}
   >
-    <p class="text-sm text-slate-600 mb-4">
+    <p class="text-sm text-ink-2 mb-4">
       The AI only writes the parser spec — it never sees your transactions, which are parsed locally. Bring your own API key from either provider.
     </p>
     <div class="space-y-3">
@@ -417,12 +417,12 @@ export function APIKeyModal({ open, onClose, onSaved }) {
       <div>
         <${Label}>API key</${Label}>
         <${Input} type="password" value=${key} onChange=${e => setKey(e.target.value)} placeholder=${provider === 'anthropic' ? 'sk-ant-…' : 'sk-…'} autoComplete="off" />
-        <p class="text-xs text-slate-500 mt-1">
+        <p class="text-xs text-ink-mute mt-1">
           Default model: <span class="font-mono">${LLM_PROVIDERS[provider]?.defaultModel}</span>.${' '}
-          <a href=${LLM_PROVIDERS[provider]?.keyUrl} target="_blank" rel="noreferrer" class="text-brand-600 hover:underline">Get a key →</a>
+          <a href=${LLM_PROVIDERS[provider]?.keyUrl} target="_blank" rel="noreferrer" class="text-maple-deep hover:underline">Get a key →</a>
         </p>
       </div>
-      <div class="rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800">
+      <div class="rounded-lg bg-butter-soft border border-butter-line p-3 text-xs text-butter-deep">
         The key is stored only in this browser's local storage and sent directly to ${LLM_PROVIDERS[provider]?.label}. It is excluded from DB exports. Because this page loads libraries from CDNs, treat the key as exposed to this page — use a key you can rotate.
       </div>
     </div>
@@ -588,20 +588,20 @@ export function AIConverterWizard({ open, onClose, file, format, defaults, onSav
     return html`<${Modal} open=${open} onClose=${onClose} title="Set up a converter with AI"
       footer=${html`<${Fragment}><${Button} variant="ghost" onClick=${onClose}>Cancel</${Button}><${Button} onClick=${handleNoticeConfirmed}>Got it, proceed</${Button}></${Fragment}>`}>
       <div class="space-y-4 max-w-xl">
-        <div class="rounded-lg bg-amber-50 border border-amber-200 p-4 text-sm text-amber-900">
+        <div class="rounded-lg bg-butter-soft border border-butter-line p-4 text-sm text-butter-deep">
           <p class="font-semibold mb-2">Consider removing personal information first</p>
-          <p class="mb-3 text-amber-800">
+          <p class="mb-3 text-butter-deep">
             The wizard will send a portion of your document to an AI model to learn its format.
             The AI only needs to see the structure — not your actual data.
           </p>
           <p class="font-medium mb-1">Consider redacting:</p>
-          <ul class="list-disc list-inside space-y-1 text-amber-800 mb-3">
+          <ul class="list-disc list-inside space-y-1 text-butter-deep mb-3">
             <li>Your name and address</li>
             <li>Full account numbers (keeping the last 4 digits is fine)</li>
             <li>Exact balances (replace with $0.00)</li>
             <li>Any other personal identifiers in the header</li>
           </ul>
-          <p class="text-amber-800">
+          <p class="text-butter-deep">
             <span class="font-medium">Tip:</span> 5–10 representative rows are enough — you can truncate the rest.
             Dates, merchant names, and amounts can stay; they help the AI understand the format.
           </p>
@@ -624,32 +624,32 @@ export function AIConverterWizard({ open, onClose, file, format, defaults, onSav
     title="Set up a converter with AI"
     size="xl"
     footer=${html`<${Fragment}>
-      <div class="mr-auto text-xs text-slate-500 self-center">
+      <div class="mr-auto text-xs text-ink-mute self-center">
         Using ${LLM_PROVIDERS[cfg.provider]?.label} · <span class="font-mono">${cfg.model}</span> ·${' '}
-        <button class="text-brand-600 hover:underline" onClick=${() => setStage('key')}>change key</button>
+        <button class="text-maple-deep hover:underline" onClick=${() => setStage('key')}>change key</button>
       </div>
       <${Button} variant="ghost" onClick=${onClose}>Cancel</${Button}>
       <${Button} onClick=${doSave} disabled=${!canSave}>Save converter & parse</${Button}>
     </${Fragment}>`}
   >
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <div class="flex flex-col border border-slate-200 rounded-lg overflow-hidden h-[58vh]">
-        <div ref=${scrollRef} class="flex-1 overflow-auto scrollbar-thin p-3 space-y-3 bg-slate-50">
+      <div class="flex flex-col border border-rule rounded-lg overflow-hidden h-[58vh]">
+        <div ref=${scrollRef} class="flex-1 overflow-auto scrollbar-thin p-3 space-y-3 bg-paper">
           ${messages.map((m, i) => {
             if (m.role === 'auto' || m.role === 'note') {
-              return html`<div key=${i} class="text-center"><span class="inline-block text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-3 py-1">${m.display || m.text}</span></div>`;
+              return html`<div key=${i} class="text-center"><span class="inline-block text-[11px] text-butter-deep bg-butter-soft border border-butter-line rounded-full px-3 py-1">${m.display || m.text}</span></div>`;
             }
             const isUser = m.role === 'user';
             return html`<div key=${i} class=${classNames('flex', isUser ? 'justify-end' : 'justify-start')}>
-              <div class=${classNames('max-w-[85%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap', isUser ? 'bg-brand-600 text-white' : 'bg-white border border-slate-200 text-slate-800')}>
+              <div class=${classNames('max-w-[85%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap', isUser ? 'bg-maple text-ink' : 'bg-paper-2 border border-rule text-ink')}>
                 ${m.display || m.text}
               </div>
             </div>`;
           })}
-          ${busy && html`<div class="text-xs text-slate-500 px-1">Thinking…</div>`}
-          ${fatal && html`<div class="text-xs text-red-600 bg-red-50 border border-red-200 rounded p-2">${fatal}</div>`}
+          ${busy && html`<div class="text-xs text-ink-mute px-1">Thinking…</div>`}
+          ${fatal && html`<div class="text-xs text-plum bg-plum-soft border border-plum-line rounded p-2">${fatal}</div>`}
         </div>
-        <div class="border-t border-slate-200 p-2 flex gap-2 bg-white">
+        <div class="border-t border-rule p-2 flex gap-2 bg-paper-2">
           <${Input}
             value=${input}
             onChange=${e => setInput(e.target.value)}
@@ -666,16 +666,16 @@ export function AIConverterWizard({ open, onClose, file, format, defaults, onSav
         <div class="flex items-center gap-2 text-xs">
           ${parseResult ? (
             parseResult.error
-              ? html`<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">Engine error</span>`
+              ? html`<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-plum-soft text-plum-deep">Engine error</span>`
               : html`<${Fragment}>
-                  <span class=${`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${parsedCount > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'}`}>${parsedCount} parsed</span>
-                  <span class=${`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${warnCount > 0 ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-700'}`}>${warnCount} warning(s)</span>
+                  <span class=${`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${parsedCount > 0 ? 'bg-paper-3 text-forest' : 'bg-paper-3 text-ink-2'}`}>${parsedCount} parsed</span>
+                  <span class=${`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${warnCount > 0 ? 'bg-butter-soft text-butter-deep' : 'bg-paper-3 text-ink-2'}`}>${warnCount} warning(s)</span>
                 </${Fragment}>`
-          ) : html`<span class="text-slate-400">Waiting for first result…</span>`}
+          ) : html`<span class="text-ink-mute">Waiting for first result…</span>`}
         </div>
         ${spec
           ? html`<${LivePreview} file=${file} spec=${spec} format=${format} />`
-          : html`<div class="text-sm text-slate-500">The proposed converter and a live transaction preview will appear here.</div>`}
+          : html`<div class="text-sm text-ink-mute">The proposed converter and a live transaction preview will appear here.</div>`}
       </div>
     </div>
   </${Modal}>`;

@@ -112,9 +112,9 @@ export function ReviewView() {
     : null;
 
   return html`<${PageContainer}>
-    ${batchPosition && html`<div class="mb-4 px-4 py-2 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-900 flex items-center justify-between">
+    ${batchPosition && html`<div class="mb-4 px-4 py-2 bg-paper-3 border border-rule rounded-lg text-sm text-forest flex items-center justify-between">
       <span>Batch review — file <span class="font-semibold">${batchPosition.current}</span> of ${batchPosition.total}</span>
-      <span class="text-xs text-emerald-700">
+      <span class="text-xs text-forest">
         ${state.batchStats.autoImported > 0 && `${state.batchStats.autoImported} auto-imported`}
         ${state.batchStats.autoImported > 0 && state.batchStats.skippedNoHint > 0 && ' · '}
         ${state.batchStats.skippedNoHint > 0 && `${state.batchStats.skippedNoHint} unrecognized`}
@@ -152,8 +152,8 @@ export function ReviewView() {
     </${Card}>
 
     ${review.errors?.length > 0 && html`<details class="mt-6">
-      <summary class="text-sm text-amber-700 hover:underline cursor-pointer">${review.errors.length} parse warnings</summary>
-      <pre class="mt-2 text-xs bg-amber-50 border border-amber-200 rounded p-3 max-h-48 overflow-auto scrollbar-thin font-mono whitespace-pre-wrap">
+      <summary class="text-sm text-butter-deep hover:underline cursor-pointer">${review.errors.length} parse warnings</summary>
+      <pre class="mt-2 text-xs bg-butter-soft border border-butter-line rounded p-3 max-h-48 overflow-auto scrollbar-thin font-mono whitespace-pre-wrap">
 ${review.errors.map(e => e.row ? `Row ${e.row}: ${e.error}` : e.error).join('\n')}</pre>
     </details>`}
   </${PageContainer}>`;
@@ -162,7 +162,7 @@ ${review.errors.map(e => e.row ? `Row ${e.row}: ${e.error}` : e.error).join('\n'
 function ReviewTable({ items, updateItem, removeItem }) {
   return html`<div class="overflow-auto scrollbar-thin">
     <table class="w-full text-sm">
-      <thead class="bg-slate-50 text-slate-600 text-xs uppercase tracking-wide sticky top-0">
+      <thead class="bg-paper text-ink-2 text-xs uppercase tracking-wide sticky top-0">
         <tr>
           <th class="text-left px-3 py-2 w-8"></th>
           <th class="text-left px-3 py-2">Date</th>
@@ -174,23 +174,23 @@ function ReviewTable({ items, updateItem, removeItem }) {
           <th class="text-right px-3 py-2 w-24">Actions</th>
         </tr>
       </thead>
-      <tbody class="divide-y divide-slate-200">
+      <tbody class="divide-y divide-rule">
         ${items.map(({ t, i }) => html`<${ReviewRow} key=${i} t=${t} idx=${i} updateItem=${updateItem} removeItem=${removeItem} />`)}
       </tbody>
     </table>
-    ${items.length === 0 && html`<div class="py-10 text-center text-sm text-slate-500">No transactions match this filter.</div>`}
+    ${items.length === 0 && html`<div class="py-10 text-center text-sm text-ink-mute">No transactions match this filter.</div>`}
   </div>`;
 }
 
 function ReviewRow({ t, idx, updateItem, removeItem }) {
-  return html`<tr class=${classNames(t._duplicate && 'bg-amber-50', t.is_excluded && 'opacity-50')}>
+  return html`<tr class=${classNames(t._duplicate && 'bg-butter-soft', t.is_excluded && 'opacity-50')}>
     <td class="px-3 py-2">
       <input
         type="checkbox"
         checked=${t._confirmed && !t._duplicate}
         onChange=${e => updateItem(idx, { _confirmed: e.target.checked })}
         disabled=${t._duplicate}
-        class="rounded border-slate-300"
+        class="rounded border-rule"
       />
     </td>
     <td class="px-3 py-2">
@@ -234,7 +234,7 @@ function ReviewRow({ t, idx, updateItem, removeItem }) {
         ${TXN_TYPES.map(tt => html`<option key=${tt} value=${tt}>${TXN_TYPE_LABEL[tt]}</option>`)}
       </${Select}>
     </td>
-    <td class=${classNames('px-3 py-2 text-right font-mono whitespace-nowrap', t.signed_amount < 0 ? 'text-red-600' : 'text-emerald-600')}>
+    <td class=${classNames('px-3 py-2 text-right font-mono whitespace-nowrap', t.signed_amount < 0 ? 'text-plum' : 'text-forest')}>
       ${formatMoney(t.signed_amount)}
     </td>
     <td class="px-3 py-2 text-right">
@@ -242,12 +242,12 @@ function ReviewRow({ t, idx, updateItem, removeItem }) {
         <button
           onClick=${() => updateItem(idx, { is_excluded: !t.is_excluded })}
           title=${t.is_excluded ? 'Include' : 'Exclude'}
-          class="text-slate-500 hover:text-slate-700 px-1.5"
+          class="text-ink-mute hover:text-ink-2 px-1.5"
         >${t.is_excluded ? '↺' : '∅'}</button>
         <button
           onClick=${() => removeItem(idx)}
           title="Delete"
-          class="text-red-500 hover:text-red-700 px-1.5"
+          class="text-plum hover:text-plum-deep px-1.5"
         >🗑</button>
       </div>
     </td>

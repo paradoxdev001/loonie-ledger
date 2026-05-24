@@ -133,26 +133,26 @@ function TxnPaginator({ page, totalPages, total, pageSize, setPage, setPageSize 
   const end = Math.min(page * pageSize, total);
   const pageNums = buildPageNumbers(page, totalPages);
   const btnBase = 'min-w-[2rem] px-2 py-1 rounded text-center transition-colors';
-  return html`<div class="flex items-center justify-between px-4 py-2 text-sm text-slate-600">
-    <span class="text-slate-500 whitespace-nowrap">${start}–${end} of ${total}</span>
+  return html`<div class="flex items-center justify-between px-4 py-2 text-sm text-ink-2">
+    <span class="text-ink-mute whitespace-nowrap">${start}–${end} of ${total}</span>
     <div class="flex items-center gap-1">
       <button onClick=${() => setPage(p => p - 1)} disabled=${page === 1}
-        class="px-2 py-1 rounded hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed">‹</button>
+        class="px-2 py-1 rounded hover:bg-paper-3 disabled:opacity-40 disabled:cursor-not-allowed">‹</button>
       ${pageNums.map((n, i) =>
         n === '...'
-          ? html`<span key=${'e' + i} class="px-1 text-slate-400 select-none">…</span>`
+          ? html`<span key=${'e' + i} class="px-1 text-ink-mute select-none">…</span>`
           : html`<button key=${n} onClick=${() => setPage(n)}
-              class=${classNames(btnBase, n === page ? 'bg-emerald-600 text-white font-medium' : 'hover:bg-slate-100')}>
+              class=${classNames(btnBase, n === page ? 'bg-maple text-ink font-medium' : 'hover:bg-paper-3')}>
               ${n}
             </button>`
       )}
       <button onClick=${() => setPage(p => p + 1)} disabled=${page === totalPages}
-        class="px-2 py-1 rounded hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed">›</button>
+        class="px-2 py-1 rounded hover:bg-paper-3 disabled:opacity-40 disabled:cursor-not-allowed">›</button>
     </div>
     <div class="flex items-center gap-2 whitespace-nowrap">
-      <span class="text-slate-400">Per page</span>
+      <span class="text-ink-mute">Per page</span>
       <select value=${pageSize} onChange=${e => { setPageSize(Number(e.target.value)); setPage(1); }}
-        class="border border-slate-300 rounded px-2 py-1 text-sm bg-white">
+        class="border border-rule rounded px-2 py-1 text-sm bg-paper-2">
         ${[25, 50, 75, 100].map(n => html`<option key=${n} value=${n}>${n}</option>`)}
       </select>
     </div>
@@ -181,10 +181,10 @@ function SortTh({ col, label, sort, setSort, align = 'left', className = '' }) {
   const toggle = () => setSort(s =>
     s.col === col ? { col, dir: s.dir === 'desc' ? 'asc' : 'desc' } : { col, dir: 'desc' }
   );
-  return html`<th class=${`px-3 py-2 cursor-pointer select-none hover:bg-slate-100 text-${align} ${className}`} onClick=${toggle}>
+  return html`<th class=${`px-3 py-2 cursor-pointer select-none hover:bg-paper-3 text-${align} ${className}`} onClick=${toggle}>
     <span class="inline-flex items-center gap-1">
       ${label}
-      <span class=${active ? 'text-emerald-600' : 'text-slate-300'}>
+      <span class=${active ? 'text-forest' : 'text-ink-mute'}>
         ${active ? (sort.dir === 'desc' ? '↓' : '↑') : '↕'}
       </span>
     </span>
@@ -204,9 +204,9 @@ function TransactionTable({ rows, update, remove, recurringTxnIds, onCreateRule,
   const paginatorProps = { page, totalPages, total: rows.length, pageSize, setPage, setPageSize };
 
   return html`<div class="overflow-auto scrollbar-thin">
-    ${showPaginator && html`<div class="border-b border-slate-200"><${TxnPaginator} ...${paginatorProps} /></div>`}
+    ${showPaginator && html`<div class="border-b border-rule"><${TxnPaginator} ...${paginatorProps} /></div>`}
     <table class="w-full text-sm">
-      <thead class="bg-slate-50 text-slate-600 text-xs uppercase tracking-wide">
+      <thead class="bg-paper text-ink-2 text-xs uppercase tracking-wide">
         <tr>
           <${SortTh} col="transaction_date" label="Date" sort=${sort} setSort=${setSort} />
           <${SortTh} col="description" label="Description" sort=${sort} setSort=${setSort} />
@@ -219,7 +219,7 @@ function TransactionTable({ rows, update, remove, recurringTxnIds, onCreateRule,
           <th class="text-right px-3 py-2 w-16"></th>
         </tr>
       </thead>
-      <tbody class="divide-y divide-slate-200">
+      <tbody class="divide-y divide-rule">
         ${pageRows.map(r => {
           const signed = r.transaction_type === 'expense' || r.transaction_type === 'cc_payment'
             ? -Math.abs(r.amount) : (r.transaction_type === 'transfer' ? -Math.abs(r.amount) : Math.abs(r.amount));
@@ -232,7 +232,7 @@ function TransactionTable({ rows, update, remove, recurringTxnIds, onCreateRule,
                 <span class="truncate">${r.description}</span>
               </div>
             </td>
-            <td class="px-3 py-2 text-xs text-slate-600">${r.institution} · ${r.account_name}</td>
+            <td class="px-3 py-2 text-xs text-ink-2">${r.institution} · ${r.account_name}</td>
             <td class="px-3 py-2">
               <${Select} value=${r.category || ''} onChange=${e => {
                 const cat = e.target.value;
@@ -249,7 +249,7 @@ function TransactionTable({ rows, update, remove, recurringTxnIds, onCreateRule,
               </${Select}>
             </td>
             <td class="px-3 py-2"><${Badge} color=${r.transaction_type==='income'?'green':r.transaction_type==='expense'?'red':'slate'}>${TXN_TYPE_LABEL[r.transaction_type]}</${Badge}></td>
-            <td class=${classNames('px-3 py-2 text-right font-mono whitespace-nowrap', signed < 0 ? 'text-red-600' : 'text-emerald-600')}>
+            <td class=${classNames('px-3 py-2 text-right font-mono whitespace-nowrap', signed < 0 ? 'text-plum' : 'text-forest')}>
               ${formatMoney(signed)}
             </td>
             <td class="px-3 py-2 text-center">
@@ -259,15 +259,15 @@ function TransactionTable({ rows, update, remove, recurringTxnIds, onCreateRule,
               <${SourceInfoButton} documentId=${r.document_id} />
             </td>
             <td class="px-3 py-2 text-right whitespace-nowrap">
-              <button onClick=${() => onCreateRule && onCreateRule(r)} class="text-slate-400 hover:text-emerald-600 text-xs mr-2" title="Create category rule from this transaction">+rule</button>
-              <button onClick=${() => remove(r.id)} class="text-red-500 hover:text-red-700">🗑</button>
+              <button onClick=${() => onCreateRule && onCreateRule(r)} class="text-ink-mute hover:text-forest text-xs mr-2" title="Create category rule from this transaction">+rule</button>
+              <button onClick=${() => remove(r.id)} class="text-plum hover:text-plum-deep">🗑</button>
             </td>
           </tr>`;
         })}
       </tbody>
     </table>
     ${rows.length === 0 && html`<${EmptyState} icon="📋" title="No transactions" description="Try adjusting filters or upload more documents." />`}
-    ${showPaginator && html`<div class="border-t border-slate-200"><${TxnPaginator} ...${paginatorProps} /></div>`}
+    ${showPaginator && html`<div class="border-t border-rule"><${TxnPaginator} ...${paginatorProps} /></div>`}
   </div>`;
 }
 
@@ -356,8 +356,8 @@ function CreateRuleModal({ transaction, onClose }) {
       </div>
       <label class="flex items-center gap-2 cursor-pointer select-none">
         <input type="checkbox" checked=${applyToExisting} onChange=${e => setApplyToExisting(e.target.checked)}
-          class="w-4 h-4 rounded border-slate-300 text-indigo-600" />
-        <span class="text-slate-700">Apply to all existing transactions</span>
+          class="w-4 h-4 rounded border-rule accent-maple" />
+        <span class="text-ink-2">Apply to all existing transactions</span>
       </label>
     </div>
   </${Modal}>`;
@@ -507,43 +507,43 @@ function AICategorizeModal({ open, onClose }) {
       ${(step === 'idle' || step === 'error') && html`<div class="space-y-4">
         <p><strong>${entries.length}</strong> unique description${entries.length !== 1 ? 's' : ''} to categorize.</p>
 
-        ${step === 'error' && html`<div class="p-3 bg-red-50 border border-red-200 rounded text-red-700 text-xs">${statusMsg}</div>`}
+        ${step === 'error' && html`<div class="p-3 bg-plum-soft border border-plum-line rounded text-plum-deep text-xs">${statusMsg}</div>`}
 
-        <div class="border border-slate-200 rounded-lg p-4 space-y-3">
+        <div class="border border-rule rounded-lg p-4 space-y-3">
           <div class="font-medium">Option 1 — Anthropic API key</div>
-          <p class="text-slate-500 text-xs">Runs automatically. Get a key at console.anthropic.com.</p>
+          <p class="text-ink-mute text-xs">Runs automatically. Get a key at console.anthropic.com.</p>
           ${apiKey ? html`<div class="flex gap-2 items-center">
             <${Button} onClick=${runAPI}>Run AI categorization</${Button}>
-            <button class="text-xs text-slate-400 hover:text-slate-600" onClick=${() => { localStorage.removeItem(AI_CAT_STORAGE_KEY); setApiKey(''); }}>Clear key</button>
+            <button class="text-xs text-ink-mute hover:text-ink-2" onClick=${() => { localStorage.removeItem(AI_CAT_STORAGE_KEY); setApiKey(''); }}>Clear key</button>
           </div>` : html`<div class="flex gap-2">
             <${Input} type="password" placeholder="sk-ant-..." value=${keyDraft} onChange=${e => setKeyDraft(e.target.value)} onKeyDown=${e => e.key === 'Enter' && saveKey()} className="flex-1 font-mono text-xs" />
             <${Button} onClick=${saveKey} disabled=${!keyDraft.trim()}>Save & run</${Button}>
           </div>`}
         </div>
 
-        <div class="border border-slate-200 rounded-lg p-4 space-y-3">
+        <div class="border border-rule rounded-lg p-4 space-y-3">
           <div class="font-medium">Option 2 — Clipboard (no API key)</div>
-          <p class="text-slate-500 text-xs">Copy the prompt, paste into Claude.ai, paste the JSON response back.</p>
+          <p class="text-ink-mute text-xs">Copy the prompt, paste into Claude.ai, paste the JSON response back.</p>
           <${Button} variant="secondary" onClick=${copyPrompt}>${copied ? 'Copied!' : 'Copy prompt'}</${Button}>
         </div>
       </div>`}
 
-      ${step === 'running' && html`<div class="py-8 text-center text-slate-500">
+      ${step === 'running' && html`<div class="py-8 text-center text-ink-mute">
         <div class="text-base mb-2">Running…</div>
         <div class="text-xs">${statusMsg}</div>
       </div>`}
 
       ${step === 'paste' && html`<div class="space-y-3">
-        <p class="text-slate-600">Paste the AI's JSON response here:</p>
+        <p class="text-ink-2">Paste the AI's JSON response here:</p>
         <textarea
           value=${responseDraft}
           onChange=${e => { setResponseDraft(e.target.value); setParseError(''); }}
           rows="10"
           placeholder=${'{"results":[{"i":0,"cat":"Dining"},{"i":1,"cat":"Groceries"},...]}'}
-          class="w-full font-mono text-xs border border-slate-200 rounded p-3 resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          class="w-full font-mono text-xs border border-rule rounded p-3 resize-none focus:outline-none focus:ring-2 focus:ring-maple"
           autoFocus
         ></textarea>
-        ${parseError && html`<p class="text-red-600 text-xs">${parseError}</p>`}
+        ${parseError && html`<p class="text-plum text-xs">${parseError}</p>`}
         <div class="flex gap-2">
           <${Button} onClick=${parseResponse} disabled=${!responseDraft.trim()}>Parse suggestions</${Button}>
           <${Button} variant="ghost" onClick=${() => setStep('idle')}>Back</${Button}>
@@ -553,13 +553,13 @@ function AICategorizeModal({ open, onClose }) {
       ${step === 'review' && html`<div class="space-y-3">
         <p>${suggestions.length} suggestion${suggestions.length !== 1 ? 's' : ''} — uncheck any you want to skip.</p>
         <div class="flex gap-2 text-xs">
-          <button class="text-emerald-600 hover:underline" onClick=${() => setAccepted(Object.fromEntries(suggestions.map((_, i) => [i, true])))}>Select all</button>
-          <span class="text-slate-300">|</span>
-          <button class="text-slate-500 hover:underline" onClick=${() => setAccepted({})}>Deselect all</button>
+          <button class="text-forest hover:underline" onClick=${() => setAccepted(Object.fromEntries(suggestions.map((_, i) => [i, true])))}>Select all</button>
+          <span class="text-ink-mute">|</span>
+          <button class="text-ink-mute hover:underline" onClick=${() => setAccepted({})}>Deselect all</button>
         </div>
-        <div class="max-h-96 overflow-auto border border-slate-200 rounded">
+        <div class="max-h-96 overflow-auto border border-rule rounded">
           <table class="w-full text-xs">
-            <thead class="bg-slate-50 text-slate-500 uppercase tracking-wide sticky top-0">
+            <thead class="bg-paper text-ink-mute uppercase tracking-wide sticky top-0">
               <tr>
                 <th class="px-3 py-2 w-8"></th>
                 <th class="text-left px-3 py-2">Description</th>
@@ -567,7 +567,7 @@ function AICategorizeModal({ open, onClose }) {
                 <th class="text-right px-3 py-2">Txns</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-slate-100">
+            <tbody class="divide-y divide-rule-soft">
               ${suggestions.map((s, i) => html`<tr key=${i} class=${accepted[i] ? '' : 'opacity-40'}>
                 <td class="px-3 py-1.5 text-center">
                   <input type="checkbox" checked=${!!accepted[i]} onChange=${e => setAccepted(a => ({ ...a, [i]: e.target.checked }))} />
@@ -578,7 +578,7 @@ function AICategorizeModal({ open, onClose }) {
                     ${CATEGORIES.map(c => html`<option key=${c} value=${c}>${c}</option>`)}
                   </${Select}>
                 </td>
-                <td class="px-3 py-1.5 text-right text-slate-500">${s.ids.length}</td>
+                <td class="px-3 py-1.5 text-right text-ink-mute">${s.ids.length}</td>
               </tr>`)}
             </tbody>
           </table>

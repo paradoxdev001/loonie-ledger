@@ -32,15 +32,15 @@ export function HistoryView() {
 
   return html`<${PageContainer}>
     <div class="mb-6">
-      <h2 class="text-xl font-semibold text-slate-900">Upload history</h2>
-      <p class="text-sm text-slate-500 mt-1">${docs.length} document${docs.length !== 1 ? 's' : ''} uploaded</p>
+      <h2 class="text-xl font-semibold text-ink">Upload history</h2>
+      <p class="text-sm text-ink-mute mt-1">${docs.length} document${docs.length !== 1 ? 's' : ''} uploaded</p>
     </div>
     ${docs.length === 0
       ? html`<${EmptyState} icon="🗂" title="No uploads yet" description="Upload a bank statement to get started." />`
       : html`<${Card}>
           <div class="overflow-x-auto">
             <table class="w-full text-sm">
-              <thead class="bg-slate-50 text-slate-600 text-xs uppercase tracking-wide border-b border-slate-200">
+              <thead class="bg-paper text-ink-2 text-xs uppercase tracking-wide border-b border-rule">
                 <tr>
                   <th class="text-left px-4 py-3">Date</th>
                   <th class="text-left px-4 py-3">File</th>
@@ -51,18 +51,18 @@ export function HistoryView() {
                   <th class="text-right px-4 py-3 w-16">Actions</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-slate-100">
-                ${docs.map(d => html`<tr key=${d.id} class="hover:bg-slate-50">
-                  <td class="px-4 py-3 whitespace-nowrap font-mono text-xs text-slate-600">
+              <tbody class="divide-y divide-rule-soft">
+                ${docs.map(d => html`<tr key=${d.id} class="hover:bg-paper">
+                  <td class="px-4 py-3 whitespace-nowrap font-mono text-xs text-ink-2">
                     ${new Date(d.uploaded_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
                   </td>
                   <td class="px-4 py-3 max-w-[240px]">
                     <span class="truncate block" title=${d.filename}>${d.filename}</span>
-                    ${d.format && html`<span class="text-xs text-slate-400 uppercase">${d.format}</span>`}
+                    ${d.format && html`<span class="text-xs text-ink-mute uppercase">${d.format}</span>`}
                   </td>
-                  <td class="px-4 py-3 text-slate-700">${d.institution || html`<span class="text-slate-400">—</span>`}</td>
-                  <td class="px-4 py-3 text-slate-700">${d.account_name || html`<span class="text-slate-400">—</span>`}</td>
-                  <td class="px-4 py-3 text-slate-700">${d.converter_name || html`<span class="text-slate-400">—</span>`}</td>
+                  <td class="px-4 py-3 text-ink-2">${d.institution || html`<span class="text-ink-mute">—</span>`}</td>
+                  <td class="px-4 py-3 text-ink-2">${d.account_name || html`<span class="text-ink-mute">—</span>`}</td>
+                  <td class="px-4 py-3 text-ink-2">${d.converter_name || html`<span class="text-ink-mute">—</span>`}</td>
                   <td class="px-4 py-3">
                     <${Badge} color=${statusColor(d.status)}>${d.status}</${Badge}>
                   </td>
@@ -70,7 +70,7 @@ export function HistoryView() {
                     <button
                       onClick=${() => setConfirmDoc(d)}
                       title="Delete document and its transactions"
-                      class="text-slate-400 hover:text-red-600 text-base"
+                      class="text-ink-mute hover:text-plum text-base"
                     >🗑</button>
                   </td>
                 </tr>`)}
@@ -89,14 +89,14 @@ export function HistoryView() {
         <${Button} variant="danger" onClick=${handleDelete}>Delete</${Button}>
       </${Fragment}>`}
     >
-      ${confirmDoc && html`<div class="text-sm text-slate-700 space-y-3">
+      ${confirmDoc && html`<div class="text-sm text-ink-2 space-y-3">
         <p>Delete <span class="font-mono break-all">${confirmDoc.filename}</span>?</p>
-        <p class="text-slate-600">
+        <p class="text-ink-2">
           ${confirmTxnCount === 0
             ? 'No transactions are linked to this document.'
             : html`This will also remove <strong>${confirmTxnCount}</strong> linked transaction${confirmTxnCount !== 1 ? 's' : ''}.`}
         </p>
-        <p class="text-xs text-slate-500">This cannot be undone.</p>
+        <p class="text-xs text-ink-mute">This cannot be undone.</p>
       </div>`}
     </${Modal}>
   </${PageContainer}>`;

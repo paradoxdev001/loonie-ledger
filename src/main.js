@@ -34,8 +34,8 @@ function App() {
   if (bootError) {
     return html`<div class="min-h-screen flex items-center justify-center p-6">
       <${Card} className="max-w-md p-6">
-        <div class="text-red-600 font-semibold mb-2">Failed to initialize</div>
-        <div class="text-sm text-slate-600">${bootError}</div>
+        <div class="text-plum font-semibold mb-2">Failed to initialize</div>
+        <div class="text-sm text-ink-2">${bootError}</div>
         <${Button} className="mt-4" onClick=${() => location.reload()}>Reload</${Button}>
       </${Card}>
     </div>`;
@@ -43,7 +43,7 @@ function App() {
 
   if (!state.ready) {
     return html`<div class="min-h-screen flex items-center justify-center">
-      <div class="text-slate-500 text-sm">Loading…</div>
+      <div class="text-ink-mute text-sm">Loading…</div>
     </div>`;
   }
 

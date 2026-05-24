@@ -131,7 +131,7 @@ export function ConvertersView() {
 function ConverterList({ items, usageCounts, onView, onExport, onDelete }) {
   return html`<div class="overflow-auto">
     <table class="w-full text-sm">
-      <thead class="bg-slate-50 text-slate-600 text-xs uppercase tracking-wide">
+      <thead class="bg-paper text-ink-2 text-xs uppercase tracking-wide">
         <tr>
           <th class="text-left px-4 py-2">Name</th>
           <th class="text-left px-4 py-2">Institution</th>
@@ -142,10 +142,10 @@ function ConverterList({ items, usageCounts, onView, onExport, onDelete }) {
           <th class="text-right px-4 py-2"></th>
         </tr>
       </thead>
-      <tbody class="divide-y divide-slate-200">
+      <tbody class="divide-y divide-rule">
         ${items.map(c => {
           const count = usageCounts[c.id] || 0;
-          return html`<tr key=${c.id} class="hover:bg-slate-50">
+          return html`<tr key=${c.id} class="hover:bg-paper">
             <td class="px-4 py-3 font-medium">${c.name}</td>
             <td class="px-4 py-3">${c.institution}</td>
             <td class="px-4 py-3">${ACCOUNT_TYPE_LABEL[c.account_type] || '—'}</td>
@@ -223,11 +223,11 @@ function ConverterDetailModal({ converter, onClose, onSaved, onExport }) {
         <textarea
           value=${specText}
           onChange=${e => setSpecText(e.target.value)}
-          class="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-mono focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none"
+          class="block w-full rounded-lg border border-rule bg-paper-2 px-3 py-2 text-xs font-mono focus:border-maple focus:ring-1 focus:ring-maple outline-none"
           rows="20"
         ></textarea>
       </div>
-      ${error && html`<div class="text-sm text-red-600">${error}</div>`}
+      ${error && html`<div class="text-sm text-plum">${error}</div>`}
     </div>
   </${Modal}>`;
 }
