@@ -222,10 +222,16 @@ export function HelpView() {
               plenty — dates, merchant names, and amounts can stay, since they help the AI understand the
               format.</${Note}>
 
-            <${Sub}>Bring your own key</${Sub}>
-            <${P}>You supply an API key from <strong>Anthropic (Claude)</strong> or
-              ${' '}<strong>OpenAI (GPT)</strong>. The key is stored only in this browser's local storage, sent
-              directly to that provider, and excluded from backup exports.</${P}>
+            <${Sub}>Two ways to talk to the model</${Sub}>
+            <${P}><strong>Option 1 — API key.</strong> You supply an API key from
+              ${' '}<strong>Anthropic (Claude)</strong> or <strong>OpenAI (GPT)</strong>. The key is stored only
+              in this browser's local storage, sent directly to that provider, and excluded from backup
+              exports. This mode runs the self-correcting validation loop automatically.</${P}>
+            <${P}><strong>Option 2 — Clipboard (no API key).</strong> The wizard hands you a ready-made
+              prompt; paste it into <strong>Claude.ai</strong> or <strong>ChatGPT</strong>, then paste the
+              spec the model returns back into the wizard. The spec is parsed locally and shown in the live
+              preview, exactly like the API path. If it isn't perfect, copy the follow-up prompt (which
+              bundles the engine's validation result) and repeat — one copy, one paste per round.</${P}>
             <${Note}>Because this page loads libraries from public CDNs, treat the key as exposed to the
               page — use a key you can rotate, and never share it. You can manage or clear it any time in
               ${' '}<strong>Settings → AI assistant</strong>.</${Note}>
@@ -245,9 +251,9 @@ export function HelpView() {
             </${UL}>
             <${P} className="mt-3">The saved converter is indistinguishable from a hand-written one and is
               matched to future uploads just like a built-in.</${P}>
-            <${P} className="mt-3"><strong>No API key?</strong> You can still build a converter by hand
-              with <strong>Bootstrap manually</strong>, which proposes a spec from heuristics and lets you
-              adjust the column/regex mapping with a live preview.</${P}>
+            <${P} className="mt-3"><strong>No API key?</strong> Use the clipboard option above, or build a
+              converter by hand with <strong>Bootstrap manually</strong>, which proposes a spec from
+              heuristics and lets you adjust the column/regex mapping with a live preview.</${P}>
           </${Section}>
 
           <${Section} id="review" title="Reviewing before import">

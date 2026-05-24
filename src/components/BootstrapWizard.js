@@ -6,9 +6,28 @@ import { dao } from '../db/store.js';
 import { readFileForParse, applyConverter } from '../engine/converter.js';
 import { suggestCSVSpec, suggestPDFSpec } from '../engine/bootstrap.js';
 import { pdfToText, pdfToRows } from '../engine/converter.js';
-import { callLLM, getLLMConfig, setLLMConfig, LLM_PROVIDERS, LLM_KEY_STORAGE, normalizeWizardSpec } from '../llm/adapter.js';
+import { callLLM, getLLMConfig, setLLMConfig, LLM_PROVIDERS, LLM_KEY_STORAGE, normalizeWizardSpec, LLM_SYSTEM_PROMPT } from '../llm/adapter.js';
 import { TXN_TYPE_LABEL } from '../constants.js';
 import { Button, Card, Modal, Label, Input, Select, HelpLink } from './ui/index.js';
+
+// Pull a JSON object out of a pasted chat reply. Pasted responses aren't
+// schema-constrained like API calls, so they often carry prose and ```json
+// fences — prefer a fenced block, else grab the outermost {...}.
+function extractSpecJson(text) {
+  if (!text) return null;
+  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const body = fence ? fence[1] : text;
+  const m = body.match(/\{[\s\S]*\}/);
+  return m ? m[0] : null;
+}
+
+// Small numbered step badge for the clipboard wizard's instructions.
+function clipStepNum(n, active = false) {
+  return html`<span class=${classNames(
+    'flex-none w-5 h-5 rounded-full text-[11px] font-semibold grid place-items-center',
+    active ? 'bg-maple text-ink' : 'bg-paper-3 text-ink-2'
+  )}>${n}</span>`;
+}
 
 export function BootstrapWizard({ open, onClose, file, format, previewText, defaults, onSaved }) {
   const [stage, setStage] = useState('analyzing');
@@ -437,6 +456,13 @@ export function AIConverterWizard({ open, onClose, file, format, defaults, onSav
   const [busy, setBusy] = useState(false);
   const [fatal, setFatal] = useState(null);
   const [input, setInput] = useState('');
+  // mode: 'api' (auto-loop via key) | 'clip' (manual copy/paste, no key)
+  const [mode, setMode] = useState(null);
+  const [clipDocCtx, setClipDocCtx] = useState(null);
+  const [clipFirstText, setClipFirstText] = useState('');
+  const [clipTweak, setClipTweak] = useState('');
+  const [clipResponse, setClipResponse] = useState('');
+  const [clipCopied, setClipCopied] = useState(false);
   const [meta, setMeta] = useState({
     name: '', institution: defaults?.institution || '', account_type: defaults?.accountType || '',
     default_account: defaults?.accountName || '', notes: ''
@@ -447,14 +473,38 @@ export function AIConverterWizard({ open, onClose, file, format, defaults, onSav
   useEffect(() => {
     if (!open || !file) return;
     setMessages([]); setSpec(null); setParseResult(null); setFatal(null); setInput('');
+    setMode(null); setClipDocCtx(null); setClipFirstText(''); setClipTweak(''); setClipResponse(''); setClipCopied(false);
     setMeta(m => ({ ...m, name: defaults?.institution ? `${defaults.institution} (${(format || '').toUpperCase()}, AI)` : `New ${(format || '').toUpperCase()} converter` }));
     setStage('notice');
   }, [open, file]);
 
   function handleNoticeConfirmed() {
+    setStage('mode');
+  }
+
+  function chooseApi() {
+    setMode('api');
     const conf = getLLMConfig();
     if (!conf.apiKey) { setStage('key'); return; }
     startAnalysis();
+  }
+
+  async function chooseClipboard() {
+    setMode('clip');
+    setStage('chat');
+    setBusy(true); setFatal(null);
+    try {
+      const ctx = await extractDocContext();
+      const firstText = `Document type: ${(format || '').toUpperCase()}\nFilename: ${file.name}\n\nDocument excerpt:\n---\n${ctx}\n---\n\nAnalyze this statement and produce a converter spec.`;
+      setClipDocCtx(ctx);
+      setClipFirstText(firstText);
+      setMessages([{ role: 'user', text: firstText, display: `Analyze ${file.name}` }]);
+    } catch (e) {
+      console.error(e);
+      setFatal(e.message);
+    } finally {
+      setBusy(false);
+    }
   }
 
   useEffect(() => {
@@ -565,6 +615,52 @@ export function AIConverterWizard({ open, onClose, file, format, defaults, onSav
     }
   }
 
+  function buildFollowupPrompt(pr, tweak) {
+    const clean = pr && !pr.error && pr.rows.length > 0 && pr.errors.length === 0;
+    const parts = ['Current parse result from the deterministic engine:\n' + summarize(pr)];
+    if (tweak && tweak.trim()) parts.push('What to change: ' + tweak.trim());
+    else if (!clean) parts.push('Please correct the spec so all transaction rows parse cleanly.');
+    parts.push('Return ONLY the corrected JSON converter spec — no explanation, no markdown fences.');
+    return parts.join('\n\n');
+  }
+
+  // The text the user copies into Claude.ai/ChatGPT. First turn carries the full
+  // system prompt + document excerpt; later turns are incremental, since the
+  // user's chat keeps context (we never re-send the whole transcript).
+  const clipPrompt = mode !== 'clip' ? '' : (
+    !spec
+      ? (clipFirstText ? `${LLM_SYSTEM_PROMPT}\n\n${clipFirstText}\n\nReturn ONLY the JSON converter spec — no explanation, no markdown fences.` : '')
+      : buildFollowupPrompt(parseResult, clipTweak)
+  );
+
+  function copyClipPrompt() {
+    if (!clipPrompt) return;
+    navigator.clipboard.writeText(clipPrompt).then(() => {
+      setClipCopied(true);
+      setTimeout(() => setClipCopied(false), 1500);
+    });
+  }
+
+  async function applyPastedSpec() {
+    const json = extractSpecJson(clipResponse);
+    if (!json) { setFatal('Could not find a JSON spec in that paste — paste the full JSON the model returned.'); return; }
+    let parsed;
+    try { parsed = JSON.parse(json); } catch (e) { setFatal('That paste is not valid JSON: ' + e.message); return; }
+    setFatal(null); setBusy(true);
+    try {
+      const newSpec = normalizeWizardSpec(parsed);
+      const pr = await validate(newSpec);
+      setMessages(list => [...list, { role: 'assistant', text: 'Pasted spec applied.', spec: newSpec }]);
+      setSpec(newSpec); setParseResult(pr);
+      setClipResponse(''); setClipTweak('');
+    } catch (e) {
+      console.error(e);
+      setFatal(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function doSave() {
     if (!spec || !meta.institution || !meta.name) return;
     const finalSpec = normalizeWizardSpec({
@@ -613,6 +709,25 @@ export function AIConverterWizard({ open, onClose, file, format, defaults, onSav
     </${Modal}>`;
   }
 
+  if (stage === 'mode') {
+    return html`<${Modal} open=${open} onClose=${onClose} title="Set up a converter with AI"
+      footer=${html`<${Button} variant="ghost" onClick=${onClose}>Cancel</${Button}>`}>
+      <div class="space-y-4 max-w-xl text-sm">
+        <p class="text-ink-2">The AI only writes the parser spec — your transactions are always parsed locally. Pick how to talk to the model:</p>
+        <div class="border border-rule rounded-lg p-4 space-y-3">
+          <div class="font-medium">Option 1 — ${LLM_PROVIDERS[cfg.provider]?.label || 'API'} key</div>
+          <p class="text-ink-mute text-xs">Runs automatically, including a self-correcting validation loop. ${cfg.apiKey ? 'Uses the key from Settings.' : 'You’ll add a key next.'}</p>
+          <${Button} onClick=${chooseApi}>${cfg.apiKey ? 'Run with API key' : 'Add a key & run'}</${Button}>
+        </div>
+        <div class="border border-rule rounded-lg p-4 space-y-3">
+          <div class="font-medium">Option 2 — Clipboard (no API key)</div>
+          <p class="text-ink-mute text-xs">Copy a prompt, paste it into Claude.ai or ChatGPT, then paste the spec back. Each round-trip is one copy + one paste; the live preview tells you when it parses cleanly.</p>
+          <${Button} variant="secondary" onClick=${chooseClipboard}>Use clipboard</${Button}>
+        </div>
+      </div>
+    </${Modal}>`;
+  }
+
   if (stage === 'key') {
     return html`<${APIKeyModal} open=${true} onClose=${onClose} onSaved=${() => startAnalysis()} />`;
   }
@@ -620,6 +735,7 @@ export function AIConverterWizard({ open, onClose, file, format, defaults, onSav
   const parsedCount = parseResult?.rows?.length || 0;
   const warnCount = parseResult?.errors?.length || 0;
   const canSave = !!spec && !!meta.name && !!meta.institution && parsedCount > 0;
+  const clipClean = !!spec && !!parseResult && !parseResult.error && parsedCount > 0 && warnCount === 0;
 
   return html`<${Modal}
     open=${open}
@@ -628,8 +744,10 @@ export function AIConverterWizard({ open, onClose, file, format, defaults, onSav
     size="xl"
     footer=${html`<${Fragment}>
       <div class="mr-auto text-xs text-ink-mute self-center">
-        Using ${LLM_PROVIDERS[cfg.provider]?.label} · <span class="font-mono">${cfg.model}</span> ·${' '}
-        <button class="text-maple-deep hover:underline" onClick=${() => setStage('key')}>change key</button>
+        ${mode === 'clip'
+          ? html`Clipboard mode — no API key`
+          : html`Using ${LLM_PROVIDERS[cfg.provider]?.label} · <span class="font-mono">${cfg.model}</span> ·${' '}
+            <button class="text-maple-deep hover:underline" onClick=${() => setStage('key')}>change key</button>`}
       </div>
       <${Button} variant="ghost" onClick=${onClose}>Cancel</${Button}>
       <${Button} onClick=${doSave} disabled=${!canSave}>Save converter & parse</${Button}>
@@ -652,7 +770,47 @@ export function AIConverterWizard({ open, onClose, file, format, defaults, onSav
           ${busy && html`<div class="text-xs text-ink-mute px-1">Thinking…</div>`}
           ${fatal && html`<div class="text-xs text-plum bg-plum-soft border border-plum-line rounded p-2">${fatal}</div>`}
         </div>
-        <div class="border-t border-rule p-2 flex gap-2 bg-paper-2">
+        ${mode === 'clip' ? html`<div class="border-t border-rule p-3 space-y-2.5 bg-paper-2 text-xs">
+          ${!spec ? html`<${Fragment}>
+            <div class="font-medium text-ink-2">Three steps — no API key needed:</div>
+            <div class="flex items-center gap-2">
+              ${clipStepNum(1, true)}
+              <${Button} variant="secondary" onClick=${copyClipPrompt} disabled=${!clipPrompt || busy}>${clipCopied ? 'Copied!' : 'Copy prompt'}</${Button}>
+              <span class="text-ink-mute">Copy the prompt</span>
+            </div>
+            <div class="flex items-center gap-2">
+              ${clipStepNum(2)}
+              <span class="text-ink-mute">Paste it into <span class="font-medium text-ink-2">Claude.ai</span> or <span class="font-medium text-ink-2">ChatGPT</span> and send</span>
+            </div>
+            <div class="flex items-center gap-2">
+              ${clipStepNum(3)}
+              <span class="text-ink-mute">Paste its reply below, then <span class="font-medium text-ink-2">Apply</span></span>
+            </div>
+          </${Fragment}>` : html`<${Fragment}>
+            ${clipClean
+              ? html`<div class="text-forest bg-paper-3 border border-rule rounded p-2">✓ Parsed ${parsedCount} transaction${parsedCount !== 1 ? 's' : ''}, no warnings. Review the preview, then <span class="font-semibold">Save converter & parse</span> below. To refine, describe a change and copy a follow-up.</div>`
+              : html`<div class="text-butter-deep bg-butter-soft border border-butter-line rounded p-2">The engine reported ${parseResult?.error ? 'an error' : warnCount + ' warning(s)'}. Copy the follow-up so the model can fix it, then paste the new spec below.</div>`}
+            <${Input}
+              value=${clipTweak}
+              onChange=${e => setClipTweak(e.target.value)}
+              placeholder=${clipClean ? 'Describe a change to refine (optional)' : 'Describe what to change (optional)'}
+              disabled=${busy}
+            />
+            <div class="flex items-center gap-2">
+              <${Button} variant="secondary" onClick=${copyClipPrompt} disabled=${busy || (clipClean && !clipTweak.trim())}>${clipCopied ? 'Copied!' : 'Copy follow-up'}</${Button}>
+              <span class="text-ink-mute">→ paste into the same chat, then paste the new spec below</span>
+            </div>
+          </${Fragment}>`}
+          <textarea
+            value=${clipResponse}
+            onChange=${e => { setClipResponse(e.target.value); setFatal(null); }}
+            rows="3"
+            placeholder=${'Paste the spec JSON the model returned here…'}
+            class="w-full font-mono text-xs border border-rule rounded p-2 resize-none focus:outline-none focus:ring-2 focus:ring-maple"
+            disabled=${busy}
+          ></textarea>
+          <${Button} onClick=${applyPastedSpec} disabled=${busy || !clipResponse.trim()}>Apply pasted spec</${Button}>
+        </div>` : html`<div class="border-t border-rule p-2 flex gap-2 bg-paper-2">
           <${Input}
             value=${input}
             onChange=${e => setInput(e.target.value)}
@@ -661,7 +819,7 @@ export function AIConverterWizard({ open, onClose, file, format, defaults, onSav
             disabled=${busy}
           />
           <${Button} onClick=${send} disabled=${busy || !input.trim()}>Send</${Button}>
-        </div>
+        </div>`}
       </div>
 
       <div class="space-y-3">
@@ -676,6 +834,9 @@ export function AIConverterWizard({ open, onClose, file, format, defaults, onSav
                 </${Fragment}>`
           ) : html`<span class="text-ink-mute">Waiting for first result…</span>`}
         </div>
+        ${spec && parsedCount > 0 && !canSave && html`<div class="text-xs text-butter-deep bg-butter-soft border border-butter-line rounded p-2">
+          Set the ${[!meta.name && 'converter name', !meta.institution && 'institution'].filter(Boolean).join(' and ')} above to enable <span class="font-medium">Save converter & parse</span>.
+        </div>`}
         ${spec
           ? html`<${LivePreview} file=${file} spec=${spec} format=${format} />`
           : html`<div class="text-sm text-ink-mute">The proposed converter and a live transaction preview will appear here.</div>`}
