@@ -455,7 +455,7 @@ function RecurringChargesTable({ expenses }) {
           </td>
           <td class="px-4 py-2 text-right font-mono">${formatMoney(r.typical_amount)}</td>
           <td class="px-4 py-2 text-right font-mono text-ink-2">${r.cadence_days} d</td>
-          <td class="px-4 py-2 font-mono text-xs text-ink-2">${r.last_seen}</td>
+          <td class="px-4 py-2 font-mono text-xs text-ink-2">${formatDateDisplay(r.last_seen)}</td>
           <td class="px-4 py-2 text-right font-mono">${r.occurrences}</td>
           <td class="px-4 py-2 text-right font-mono text-plum">${formatMoney(r.monthly_estimate)}</td>
         </tr>`)}
