@@ -31,10 +31,10 @@ export function Header() {
       Working in memory — use Export in Settings to save your data
     </div>`}
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between h-14">
+      <div class="flex items-center justify-between h-16">
 
         <button onClick=${() => navigate('home')} class="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
-          <img src=${window.LOGO_URI} alt="Loonie Ledger" class="w-auto" style=${{ height: '42px' }} />
+          <img src=${window.LOGO_URI} alt="Loonie Ledger" class="w-auto" style=${{ height: '52px' }} />
           <span class="font-serif text-xl text-ink tracking-tight leading-none">
             Loonie <em class="italic text-maple-deep">Ledger</em>
           </span>
