@@ -12,6 +12,7 @@ import { HistoryView } from './components/History.js';
 import { ConvertersView } from './components/Converters.js';
 import { SettingsView } from './components/Settings.js';
 import { HomeView } from './components/Home.js';
+import { HelpView } from './components/Help.js';
 
 function App() {
   const [state, dispatch] = useReducer(reducer, initialState);
@@ -59,6 +60,7 @@ function App() {
     ${state.view === 'history' && html`<${HistoryView} />`}
     ${state.view === 'converters' && html`<${ConvertersView} />`}
     ${state.view === 'settings' && html`<${SettingsView} />`}
+    ${state.view === 'help' && html`<${HelpView} />`}
     <${Toast} toast=${state.toast} onClose=${() => dispatch({ type: 'CLEAR_TOAST' })} />
     <${Footer} />
   </${AppContext.Provider}>`;

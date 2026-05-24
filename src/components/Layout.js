@@ -15,6 +15,7 @@ export function Header() {
     { key: 'history',      label: 'History' },
     { key: 'converters',   label: 'Converters' },
     { key: 'settings',     label: 'Settings' },
+    { key: 'help',         label: 'Help' },
   ];
 
   const allTabs = state.pendingReview

@@ -9,13 +9,14 @@ export const initialState = {
   pendingReview: null,
   batchQueue: [],
   batchStats: null,
-  refreshKey: 0
+  refreshKey: 0,
+  helpAnchor: null
 };
 
 export function reducer(state, action) {
   switch (action.type) {
     case 'SET_READY':       return { ...state, ready: true, view: action.view || state.view };
-    case 'SET_VIEW':        return { ...state, view: action.view };
+    case 'SET_VIEW':        return { ...state, view: action.view, helpAnchor: action.anchor || null };
     case 'TOAST':           return { ...state, toast: action.toast };
     case 'CLEAR_TOAST':     return { ...state, toast: null };
     case 'SET_REVIEW':      return { ...state, pendingReview: action.payload, view: 'review' };

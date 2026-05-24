@@ -6,7 +6,7 @@ import { ACCOUNT_TYPES, ACCOUNT_TYPE_LABEL } from '../constants.js';
 import { classNames, fingerprint, formatBatchSummary } from '../utils.js';
 import { detectFormat, readFileForParse, applyConverter, pdfToText } from '../engine/converter.js';
 import { autoCategorize, extractMerchant } from '../engine/categorizer.js';
-import { Button, Card, CardHeader, Badge, Label, Input, Select } from './ui/index.js';
+import { Button, Card, CardHeader, Badge, Label, Input, Select, HelpLink } from './ui/index.js';
 import { PageContainer, PageHeader } from './Layout.js';
 import { BootstrapWizard, AIConverterWizard, InstitutionPicker } from './BootstrapWizard.js';
 
@@ -139,9 +139,10 @@ function ConverterMatchPanel({ file, format, institution, accountType, onConvert
       <p class="text-xs text-butter-deep mt-1">
         Let AI analyze the file and build a reusable converter for you, or set one up manually. Once saved, future uploads from ${institution} will skip this step.
       </p>
-      <div class="mt-3 flex flex-wrap gap-2">
+      <div class="mt-3 flex flex-wrap items-center gap-2">
         <${Button} onClick=${onNeedAIConverter}>✨ Set up with AI</${Button}>
         <${Button} variant="secondary" onClick=${onNeedConverter}>Bootstrap manually</${Button}>
+        <${HelpLink} anchor="ai-converters" label="How does this work?" />
       </div>
     </div>`;
   }
@@ -163,6 +164,7 @@ function ConverterMatchPanel({ file, format, institution, accountType, onConvert
     <div class="text-xs text-ink-mute pt-1">
       None of these match?${' '}<button onClick=${onNeedAIConverter} class="text-maple-deep hover:underline">Set up with AI ✨</button>
       ${' '}or <button onClick=${onNeedConverter} class="text-maple-deep hover:underline">bootstrap manually →</button>
+      ${' '}·${' '}<${HelpLink} anchor="ai-converters" />
     </div>
   </div>`;
 }

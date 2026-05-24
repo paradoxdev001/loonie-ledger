@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useMemo } from '../react.js';
 import { useApp } from '../state.js';
 import { dao, STORE } from '../db/store.js';
 import { formatMoney, classNames, monthKey, monthLabel, formatDateDisplay } from '../utils.js';
-import { Card, CardHeader, StatTile } from './ui/index.js';
+import { Card, CardHeader, StatTile, HelpLink } from './ui/index.js';
 import { SourceInfoButton } from './ui/index.js';
 import { PageContainer, PageHeader } from './Layout.js';
 
@@ -152,7 +152,7 @@ export function ReportsView() {
 
     <div class="mt-6">
       <${Card}>
-        <${CardHeader} title="Recurring charges" subtitle="Likely subscriptions and other monthly debits" />
+        <${CardHeader} title="Recurring charges" subtitle="Likely subscriptions and other monthly debits" right=${html`<${HelpLink} anchor="recurring" label="How is this detected?" />`} />
         <${RecurringChargesTable} expenses=${expenses} />
       </${Card}>
     </div>

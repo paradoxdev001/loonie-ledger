@@ -5,7 +5,7 @@ import { dao, STORE } from '../db/store.js';
 import { CATEGORIES, TXN_TYPES, TXN_TYPE_LABEL } from '../constants.js';
 import { formatMoney, classNames, downloadBlob, formatDateDisplay } from '../utils.js';
 import { inferTxnType, applyUserRules } from '../engine/categorizer.js';
-import { Button, Card, Select, Badge, EmptyState, Modal, Label, Input, SourceInfoButton } from './ui/index.js';
+import { Button, Card, Select, Badge, EmptyState, Modal, Label, Input, SourceInfoButton, HelpLink } from './ui/index.js';
 import { PageContainer, PageHeader } from './Layout.js';
 import { detectRecurring } from './Reports.js';
 
@@ -49,10 +49,13 @@ export function TransactionsView() {
     <${PageHeader}
       title="Transactions"
       description=${`${rows.length} matching transactions`}
-      action=${html`<div class="flex gap-2">
-        ${uncategorizedCount > 0 && html`<${Button} variant="secondary" onClick=${() => setAiOpen(true)}>
-          AI Suggest (${uncategorizedCount})
-        </${Button}>`}
+      action=${html`<div class="flex items-center gap-2">
+        ${uncategorizedCount > 0 && html`<${Fragment}>
+          <${Button} variant="secondary" onClick=${() => setAiOpen(true)}>
+            AI Suggest (${uncategorizedCount})
+          </${Button}>
+          <${HelpLink} anchor="categorization" />
+        </${Fragment}>`}
         <${Button} variant="secondary" onClick=${() => exportCsv(sortedRows)}>Export CSV</${Button}>
         <${Button} onClick=${() => dispatch({ type: 'SET_VIEW', view: 'upload' })}>Upload more</${Button}>
       </div>`}

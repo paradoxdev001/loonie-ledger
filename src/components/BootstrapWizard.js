@@ -8,7 +8,7 @@ import { suggestCSVSpec, suggestPDFSpec } from '../engine/bootstrap.js';
 import { pdfToText, pdfToRows } from '../engine/converter.js';
 import { callLLM, getLLMConfig, setLLMConfig, LLM_PROVIDERS, LLM_KEY_STORAGE, normalizeWizardSpec } from '../llm/adapter.js';
 import { TXN_TYPE_LABEL } from '../constants.js';
-import { Button, Card, Modal, Label, Input, Select } from './ui/index.js';
+import { Button, Card, Modal, Label, Input, Select, HelpLink } from './ui/index.js';
 
 export function BootstrapWizard({ open, onClose, file, format, previewText, defaults, onSaved }) {
   const [stage, setStage] = useState('analyzing');
@@ -605,6 +605,9 @@ export function AIConverterWizard({ open, onClose, file, format, defaults, onSav
             <span class="font-medium">Tip:</span> 5–10 representative rows are enough — you can truncate the rest.
             Dates, merchant names, and amounts can stay; they help the AI understand the format.
           </p>
+        </div>
+        <div class="text-xs text-ink-mute">
+          Want the full picture first? <${HelpLink} anchor="ai-converters" label="Read how AI converter setup works" />
         </div>
       </div>
     </${Modal}>`;

@@ -5,7 +5,7 @@ import { dao, STORE } from '../db/store.js';
 import { ACCOUNT_TYPE_LABEL } from '../constants.js';
 import { downloadBlob, uid } from '../utils.js';
 import { normalizeWizardSpec } from '../llm/adapter.js';
-import { Button, Card, CardHeader, Badge, EmptyState, Modal, Label, Input } from './ui/index.js';
+import { Button, Card, CardHeader, Badge, EmptyState, Modal, Label, Input, HelpLink } from './ui/index.js';
 import { PageContainer, PageHeader } from './Layout.js';
 
 const CONVERTER_FILE_MARKER = 'loonie_ledger_converter';
@@ -108,6 +108,7 @@ export function ConvertersView() {
     <${PageHeader}
       title="Converters"
       description="Each converter parses one institution's document format deterministically. Edit, export, or delete them — built-ins can be edited too."
+      action=${html`<${HelpLink} anchor="converters" label="What's a converter?" />`}
     />
 
     <${Card}>

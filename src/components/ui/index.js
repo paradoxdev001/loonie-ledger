@@ -2,6 +2,7 @@ import html from '../../html.js';
 import { useState, useEffect, Fragment } from '../../react.js';
 import { classNames } from '../../utils.js';
 import { dao } from '../../db/store.js';
+import { useApp } from '../../state.js';
 
 export function Button({ children, variant='primary', size='md', className='', ...props }) {
   const variants = {
@@ -118,6 +119,16 @@ export function StatTile({ label, value, sublabel, color='slate' }) {
     <div class=${classNames('font-serif font-normal text-3xl mt-1.5 leading-tight', colors[color])} style=${{ letterSpacing: '-0.02em' }}>${value}</div>
     ${sublabel && html`<div class="text-xs text-ink-mute mt-1">${sublabel}</div>`}
   </div>`;
+}
+
+export function HelpLink({ anchor, label = 'More info', className = '' }) {
+  const { dispatch } = useApp();
+  return html`<button
+    type="button"
+    onClick=${() => dispatch({ type: 'SET_VIEW', view: 'help', anchor })}
+    title="Open help"
+    class=${classNames('inline-flex items-center gap-1 text-xs font-medium text-maple-deep hover:underline', className)}
+  >ⓘ ${label}</button>`;
 }
 
 export function SourceInfoButton({ documentId }) {
