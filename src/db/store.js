@@ -280,13 +280,13 @@ export const dao = {
 
   listCategoryRules: () => [...STORE.category_rules].sort((a, b) =>
     (b.priority || 0) - (a.priority || 0) || a.id - b.id),
-  saveCategoryRule: ({ id, pattern, match_type = 'contains', category, priority = 100 }) => {
+  saveCategoryRule: ({ id, pattern, match_type = 'contains', category, priority = 100, amount_op = null, amount_value = null, amount_value2 = null }) => {
     if (id) {
       const r = findById('category_rules', id);
-      if (r) Object.assign(r, { pattern, match_type, category, priority });
+      if (r) Object.assign(r, { pattern, match_type, category, priority, amount_op, amount_value, amount_value2 });
     } else {
       const newId = nextId('category_rules');
-      STORE.category_rules.push({ id: newId, pattern, match_type, category, priority });
+      STORE.category_rules.push({ id: newId, pattern, match_type, category, priority, amount_op, amount_value, amount_value2 });
     }
     persistDB();
   },

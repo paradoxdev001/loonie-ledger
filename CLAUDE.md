@@ -44,7 +44,7 @@ Five in-memory tables (persisted as one JSON blob under key `state_v1`):
 - **converters** — `{ id, key, name, institution, account_type, format, spec_json, is_builtin }` — unique on `key`
 - **documents** — `{ id, filename, format, institution, account_id, converter_id, status }` — upload history
 - **transactions** — `{ id, document_id, account_id, transaction_date, amount, description, category, transaction_type, fingerprint }` — deduplicated on `(account_id, fingerprint)`
-- **category_rules** — `{ id, pattern, match_type, category, priority }` — applied in priority order
+- **category_rules** — `{ id, pattern, match_type, category, priority, amount_op, amount_value, amount_value2 }` — applied in priority order. The amount fields are optional: `amount_op` is `null`|`'eq'`|`'gt'`|`'lt'`|`'between'`, compared against the transaction's **absolute** amount (sign-agnostic). A rule needs at least one of {`pattern`, `amount_op`}; when both are set they AND. `autoCategorize` consults user rules first (so an amount-conditioned rule can re-tag a generic `transfer`/`cc_payment` that would otherwise short-circuit to its type default), then falls back to `DEFAULT_RULES` and the type default.
 
 ### Converter spec format
 

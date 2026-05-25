@@ -55,15 +55,45 @@ export function applyDefaultRules(description) {
   return null;
 }
 
-export function applyUserRules(description, rules) {
+// A rule with no pattern matches any description (amount-only rule). Otherwise
+// it uses the rule's match_type against the (lowercased) description.
+function ruleMatchesDescription(rule, description) {
+  if (!rule.pattern) return true;
   const desc = (description || '').toLowerCase();
+  if (rule.match_type === 'regex') {
+    try { return new RegExp(rule.pattern, 'i').test(desc); } catch { return false; }
+  }
+  if (rule.match_type === 'startswith') return desc.startsWith(rule.pattern.toLowerCase());
+  return desc.includes(rule.pattern.toLowerCase());
+}
+
+// A rule with no amount_op matches any amount. Comparisons use the absolute
+// value, so the user types 2300 and it matches a $2,300 txn either direction.
+function ruleMatchesAmount(rule, amount) {
+  if (!rule.amount_op) return true;
+  const a = Math.abs(Number(amount));
+  if (!Number.isFinite(a)) return false;
+  const v = Number(rule.amount_value);
+  const EPS = 0.005;
+  switch (rule.amount_op) {
+    case 'eq': return Math.abs(a - v) < EPS;
+    case 'gt': return a > v;
+    case 'lt': return a < v;
+    case 'between': {
+      const v2 = Number(rule.amount_value2);
+      const lo = Math.min(v, v2), hi = Math.max(v, v2);
+      return a >= lo - EPS && a <= hi + EPS;
+    }
+    default: return true;
+  }
+}
+
+// Returns the category of the first rule (in the order given, i.e. priority)
+// whose description AND amount conditions both match the transaction.
+export function applyUserRules(transaction, rules) {
   for (const r of rules) {
-    if (r.match_type === 'regex') {
-      try { if (new RegExp(r.pattern, 'i').test(desc)) return r.category; } catch {}
-    } else if (r.match_type === 'startswith') {
-      if (desc.startsWith(r.pattern.toLowerCase())) return r.category;
-    } else {
-      if (desc.includes(r.pattern.toLowerCase())) return r.category;
+    if (ruleMatchesDescription(r, transaction.description) && ruleMatchesAmount(r, transaction.amount)) {
+      return r.category;
     }
   }
   return null;
@@ -71,13 +101,18 @@ export function applyUserRules(description, rules) {
 
 export function autoCategorize(transaction, userRules=[]) {
   if (transaction.category) return transaction.category;
+  // Explicit user rules win first — this is what lets an amount-conditioned rule
+  // re-tag a generic transfer (e.g. an "e-Transfer Received" of $2,300 → Income)
+  // even though it'd otherwise fall through to the type-based default below.
+  const userMatch = applyUserRules(transaction, userRules);
+  if (userMatch) return userMatch;
   if (transaction.transaction_type === 'cc_payment') return 'Credit Card Payment';
   if (transaction.transaction_type === 'transfer') return 'Transfer';
   if (transaction.transaction_type === 'income') {
-    return applyUserRules(transaction.description, userRules) || applyDefaultRules(transaction.description) || 'Income';
+    return applyDefaultRules(transaction.description) || 'Income';
   }
   if (transaction.transaction_type === 'refund') return 'Refund';
-  return applyUserRules(transaction.description, userRules) || applyDefaultRules(transaction.description) || 'Other';
+  return applyDefaultRules(transaction.description) || 'Other';
 }
 
 export function extractMerchant(description) {

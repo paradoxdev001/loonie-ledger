@@ -333,6 +333,20 @@ function exportCsv(rows) {
 
 const MATCH_TYPE_LABEL = { contains: 'Contains', startswith: 'Starts with', regex: 'Regex' };
 
+// Render a rule's amount condition for the rules list, e.g. "= $2,300.00",
+// "> $1,000.00", "$100.00–$200.00", or "—" when there's no condition.
+function formatAmountCondition(rule) {
+  if (!rule.amount_op) return '—';
+  const v = formatMoney(rule.amount_value);
+  switch (rule.amount_op) {
+    case 'eq': return `= ${v}`;
+    case 'gt': return `> ${v}`;
+    case 'lt': return `< ${v}`;
+    case 'between': return `${v}–${formatMoney(rule.amount_value2)}`;
+    default: return '—';
+  }
+}
+
 // One modal for both creating and editing a rule. `rule` is null (closed), a
 // seed object ({ pattern, category } from a transaction's +rule, or {} for a
 // blank new rule), or an existing rule with an `id` (edit-in-place).
@@ -342,6 +356,9 @@ function RuleModal({ rule, onClose }) {
   const [matchType, setMatchType] = useState('contains');
   const [category, setCategory] = useState('');
   const [priority, setPriority] = useState(100);
+  const [amountOp, setAmountOp] = useState('');
+  const [amountValue, setAmountValue] = useState('');
+  const [amountValue2, setAmountValue2] = useState('');
   const [applyToExisting, setApplyToExisting] = useState(true);
 
   useEffect(() => {
@@ -350,6 +367,9 @@ function RuleModal({ rule, onClose }) {
     setMatchType(rule.match_type || 'contains');
     setCategory(rule.category || '');
     setPriority(rule.priority || 100);
+    setAmountOp(rule.amount_op || '');
+    setAmountValue(rule.amount_value != null ? String(rule.amount_value) : '');
+    setAmountValue2(rule.amount_value2 != null ? String(rule.amount_value2) : '');
     setApplyToExisting(true);
   }, [rule]);
 
@@ -358,14 +378,22 @@ function RuleModal({ rule, onClose }) {
   const isEdit = rule.id != null;
 
   const save = () => {
-    if (!pattern.trim() || !category) return;
-    const payload = { pattern: pattern.trim(), match_type: matchType, category, priority: Number(priority) };
+    // At least one of {pattern, amount condition} must be set, plus a category.
+    if ((!pattern.trim() && !amountOp) || !category) return;
+    if (amountOp && !(Number.isFinite(Number(amountValue)) && amountValue !== '')) return;
+    if (amountOp === 'between' && !(Number.isFinite(Number(amountValue2)) && amountValue2 !== '')) return;
+    const payload = {
+      pattern: pattern.trim(), match_type: matchType, category, priority: Number(priority),
+      amount_op: amountOp || null,
+      amount_value: amountOp ? Number(amountValue) : null,
+      amount_value2: amountOp === 'between' ? Number(amountValue2) : null,
+    };
     if (isEdit) payload.id = rule.id;
     dao.saveCategoryRule(payload);
     let updated = 0;
     if (applyToExisting) {
       for (const t of STORE.transactions) {
-        if (applyUserRules(t.description, [payload])) {
+        if (applyUserRules(t, [payload])) {
           dao.updateTransaction(t.id, { category });
           updated++;
         }
@@ -384,8 +412,8 @@ function RuleModal({ rule, onClose }) {
     footer=${html`<${Fragment}><${Button} variant="ghost" onClick=${onClose}>Cancel</${Button}><${Button} onClick=${save}>${isEdit ? 'Save changes' : 'Save rule'}</${Button}></${Fragment}>`}>
     <div class="space-y-4 text-sm">
       <div>
-        <${Label}>Pattern</${Label}>
-        <${Input} value=${pattern} onChange=${e => setPattern(e.target.value)} className="font-mono" />
+        <${Label}>Pattern${amountOp ? ' (optional — amount condition set)' : ''}</${Label}>
+        <${Input} value=${pattern} onChange=${e => setPattern(e.target.value)} className="font-mono" placeholder=${amountOp ? 'Leave blank to match on amount alone' : ''} />
       </div>
       <div class="grid grid-cols-2 gap-3">
         <div>
@@ -400,6 +428,26 @@ function RuleModal({ rule, onClose }) {
           <${Label}>Priority (higher runs first)</${Label}>
           <${Input} type="number" value=${priority} onChange=${e => setPriority(e.target.value)} min="1" max="999" />
         </div>
+      </div>
+      <div>
+        <${Label}>Amount condition (optional)</${Label}>
+        <div class="flex items-center gap-2">
+          <${Select} value=${amountOp} onChange=${e => setAmountOp(e.target.value)} className="flex-shrink-0 w-40">
+            <option value="">Any amount</option>
+            <option value="eq">equals</option>
+            <option value="gt">greater than</option>
+            <option value="lt">less than</option>
+            <option value="between">between</option>
+          </${Select}>
+          ${amountOp && html`<${Input} type="number" step="0.01" min="0" placeholder="0.00"
+            value=${amountValue} onChange=${e => setAmountValue(e.target.value)} className="font-mono flex-1" />`}
+          ${amountOp === 'between' && html`<${Fragment}>
+            <span class="text-ink-mute">and</span>
+            <${Input} type="number" step="0.01" min="0" placeholder="0.00"
+              value=${amountValue2} onChange=${e => setAmountValue2(e.target.value)} className="font-mono flex-1" />
+          </${Fragment}>`}
+        </div>
+        ${amountOp && html`<p class="text-xs text-ink-mute mt-1">Compared against the transaction's dollar amount, ignoring whether it's money in or out.</p>`}
       </div>
       <div>
         <${Label}>Category</${Label}>
@@ -442,6 +490,7 @@ function RulesPanel({ setEditRule }) {
                 <tr>
                   <th class="text-left px-3 py-2">Pattern</th>
                   <th class="text-left px-3 py-2 w-28">Match</th>
+                  <th class="text-right px-3 py-2 w-32">Amount</th>
                   <th class="text-left px-3 py-2 w-48">Category</th>
                   <th class="text-right px-3 py-2 w-24">Priority</th>
                   <th class="text-right px-3 py-2 w-20"></th>
@@ -449,8 +498,9 @@ function RulesPanel({ setEditRule }) {
               </thead>
               <tbody class="divide-y divide-rule">
                 ${rules.map(r => html`<tr key=${r.id}>
-                  <td class="px-3 py-2 font-mono break-all">${r.pattern}</td>
-                  <td class="px-3 py-2"><${Badge}>${MATCH_TYPE_LABEL[r.match_type] || r.match_type}</${Badge}></td>
+                  <td class="px-3 py-2 font-mono break-all">${r.pattern || html`<span class="text-ink-mute italic">any description</span>`}</td>
+                  <td class="px-3 py-2">${r.pattern ? html`<${Badge}>${MATCH_TYPE_LABEL[r.match_type] || r.match_type}</${Badge}>` : html`<span class="text-ink-mute">—</span>`}</td>
+                  <td class="px-3 py-2 text-right font-mono whitespace-nowrap ${r.amount_op ? '' : 'text-ink-mute'}">${formatAmountCondition(r)}</td>
                   <td class="px-3 py-2">${r.category}</td>
                   <td class="px-3 py-2 text-right font-mono text-ink-2">${r.priority}</td>
                   <td class="px-3 py-2 text-right whitespace-nowrap">
