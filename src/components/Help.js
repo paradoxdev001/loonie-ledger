@@ -216,11 +216,11 @@ export function HelpView() {
               excerpt of your statement so it can learn the <em>layout</em> — column positions, date
               formats, where the amount sits. It never receives your imported transactions, and once the
               spec is saved, all parsing happens locally with no further AI involvement.</${P}>
-            <${Note}><strong>Consider removing personal information first.</strong> The wizard sends a
-              portion of your document to the AI provider. Consider redacting your name and address, full
-              account numbers (last 4 digits are fine), and exact balances. 5–10 representative rows are
-              plenty — dates, merchant names, and amounts can stay, since they help the AI understand the
-              format.</${Note}>
+            <${Note}><strong>You can redact before anything is sent.</strong> After the privacy notice, the
+              wizard shows you the exact statement sample in an editable box — this applies to both the API
+              and clipboard paths. Edit out your name and address, full account numbers (last 4 digits are
+              fine), and exact balances. 5–10 representative rows are plenty — dates, merchant names, and
+              amounts can stay, since they help the AI understand the format.</${Note}>
 
             <${Sub}>Two ways to talk to the model</${Sub}>
             <${P}><strong>Option 1 — API key.</strong> You supply an API key from
@@ -240,12 +240,13 @@ export function HelpView() {
             <${UL}>
               <li>It extracts an excerpt of your document. For PDFs it also samples the x-coordinates of
                 each item, so even true table layouts (debit vs. credit by column) can be solved.</li>
-              <li>The AI proposes a spec. The wizard <strong>runs it locally and feeds any parse errors
-                back to the model automatically</strong>, up to two silent retries, before handing control
-                to you.</li>
+              <li>The AI proposes a spec, which is <strong>run locally</strong> and shown in a live preview.
+                With an API key, the wizard also <strong>feeds any parse errors back to the model
+                automatically</strong>, up to two silent retries, before handing control to you.</li>
               <li>You refine in plain language ("the dates are off by a month", "amounts should be
-                flipped") while watching a <strong>live preview</strong> of the first parsed transactions
-                and a parsed/warnings count.</li>
+                flipped") — typed directly with an API key, or copied as a follow-up prompt in clipboard
+                mode — while watching a <strong>live preview</strong> of the first parsed transactions and a
+                parsed/warnings count.</li>
               <li>Save once the preview looks right — you only need at least one parsed transaction, since
                 a valid converter can still emit harmless warnings.</li>
             </${UL}>
