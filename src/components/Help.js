@@ -305,12 +305,20 @@ export function HelpView() {
             <${P}>When transactions are uncategorized, the <strong>AI Suggest</strong> button offers
               bulk suggestions. Two ways to run it:</${P}>
             <${UL}>
-              <li><strong>With an Anthropic API key</strong> — it categorizes in batches automatically.</li>
-              <li><strong>Clipboard, no key</strong> — copy the generated prompt, paste it into Claude.ai,
-                and paste the JSON answer back.</li>
+              <li><strong>With an API key</strong> — it categorizes in batches automatically.</li>
+              <li><strong>Clipboard, no key</strong> — copy the generated prompt, paste it into Claude.ai
+                or ChatGPT, and paste the JSON answer back.</li>
             </${UL}>
             <${P} className="mt-2">Either way you review every suggestion, uncheck any you don't want, and
               optionally save them as rules so future imports categorize themselves.</${P}>
+            <${Note}><strong>What this sends.</strong> Unlike the rest of the app, AI Suggest sends data to
+              an AI provider: just your <em>transaction descriptions</em> (merchant text), deduplicated and
+              limited to the uncategorized ones. Amounts, dates, balances, and account names are never sent.
+              Descriptions can still be personal — subscriptions, or e-transfer recipient names — and the
+              modal lets you preview the exact list before running. Note the two paths differ in privacy:
+              the <strong>API key</strong> path goes to the provider under its API terms (generally not used
+              for training), while the <strong>clipboard</strong> path routes through consumer Claude.ai /
+              ChatGPT, which may retain or train on chats unless you've opted out in their settings.</${Note}>
           </${Section}>
 
           <${Section} id="reports" title="Reports">

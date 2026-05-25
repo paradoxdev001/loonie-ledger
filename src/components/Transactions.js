@@ -597,6 +597,19 @@ function AICategorizeModal({ open, onClose }) {
 
         ${step === 'error' && html`<div class="p-3 bg-plum-soft border border-plum-line rounded text-plum-deep text-xs">${statusMsg}</div>`}
 
+        <div class="rounded-lg bg-butter-soft border border-butter-line p-3 text-xs text-butter-deep space-y-2">
+          <p><span class="font-semibold">What's sent:</span> only the transaction descriptions below (merchant text) — deduplicated, and only the uncategorized ones. Amounts, dates, balances, and account names never leave your browser.</p>
+          <p>Descriptions can still be personal (subscriptions, e-transfer recipient names). The two options below differ in privacy:</p>
+          <ul class="list-disc list-inside space-y-0.5">
+            <li><span class="font-medium">API key</span> — sent to ${providerLabel} under its API terms, which generally don't use inputs to train models.</li>
+            <li><span class="font-medium">Clipboard</span> — you paste into Claude.ai / ChatGPT, consumer apps that may retain or train on chats unless you've opted out in their settings.</li>
+          </ul>
+          <details>
+            <summary class="cursor-pointer hover:underline">See the ${entries.length} description${entries.length !== 1 ? 's' : ''} that will be sent</summary>
+            <pre class="mt-1 font-mono text-[11px] bg-white border border-butter-line rounded p-2 max-h-40 overflow-auto scrollbar-thin whitespace-pre-wrap text-ink">${entries.map(e => e.description).join('\n')}</pre>
+          </details>
+        </div>
+
         <div class="border border-rule rounded-lg p-4 space-y-3">
           <div class="font-medium">Option 1 — ${providerLabel} API key</div>
           ${apiKey ? html`<div class="space-y-2">
