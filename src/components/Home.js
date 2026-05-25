@@ -77,8 +77,9 @@ export function HomeView() {
         Your finances,${' '}<em class="italic text-maple-deep">on your terms.</em>
       </h1>
       <p class="mt-5 text-lg text-ink-2 max-w-2xl mx-auto leading-relaxed">
-        Unlike apps that require bank-linking services, Loonie Ledger works directly from your downloaded bank and credit card statements.
-        Your financial data stays on your computer — no broken connections, no third-party access, no subscription required.
+        Loonie Ledger turns your downloaded bank and credit card statements into a clear picture of your spending — automatically
+        categorizing transactions and charting where your money goes across every account. No bank-linking services, no third-party
+        access, no subscription. Your financial data never leaves your computer.
       </p>
       <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
         <${Button} size="lg" onClick=${goToUpload}>Get started — it's free</${Button}>
