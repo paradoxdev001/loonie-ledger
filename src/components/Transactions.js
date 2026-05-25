@@ -4,7 +4,7 @@ import { useApp } from '../state.js';
 import { dao, STORE } from '../db/store.js';
 import { CATEGORIES, TXN_TYPES, TXN_TYPE_LABEL } from '../constants.js';
 import { formatMoney, classNames, downloadBlob, formatDateDisplay } from '../utils.js';
-import { inferTxnType, applyUserRules } from '../engine/categorizer.js';
+import { inferTxnType, applyUserRules, reconcileTypeForCategory } from '../engine/categorizer.js';
 import { Button, Card, Select, Badge, EmptyState, Modal, Label, Input, SourceInfoButton, HelpLink } from './ui/index.js';
 import { PageContainer, PageHeader } from './Layout.js';
 import { detectRecurring } from './Reports.js';
@@ -283,9 +283,12 @@ function TransactionTable({ rows, update, remove, recurringTxnIds, onCreateRule,
               <${Select} value=${r.category || ''} onChange=${e => {
                 const cat = e.target.value;
                 const fields = { category: cat };
-                if (cat === 'Transfer') {
-                  fields.transaction_type = 'transfer';
+                const recon = reconcileTypeForCategory(cat, r);
+                if (recon) {
+                  // Income/Transfer/Refund/CC Payment realign type + sign.
+                  Object.assign(fields, recon);
                 } else if (r.transaction_type === 'transfer') {
+                  // Leaving Transfer for a spending category — re-infer the type.
                   fields.transaction_type = inferTxnType(r.signed_amount, r.account_type, r.description);
                 }
                 update(r.id, fields);
@@ -394,7 +397,10 @@ function RuleModal({ rule, onClose }) {
     if (applyToExisting) {
       for (const t of STORE.transactions) {
         if (applyUserRules(t, [payload])) {
-          dao.updateTransaction(t.id, { category });
+          const fields = { category };
+          const recon = reconcileTypeForCategory(category, t);
+          if (recon) Object.assign(fields, recon);
+          dao.updateTransaction(t.id, fields);
           updated++;
         }
       }

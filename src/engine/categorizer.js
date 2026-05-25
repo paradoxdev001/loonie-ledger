@@ -1,3 +1,28 @@
+import { deriveSignedAmount } from '../utils.js';
+
+// Four categories ARE transaction types. Assigning one must also align
+// transaction_type (and the signed_amount that income/expense reporting keys
+// off) — otherwise a "transfer" re-tagged as Income still reports as an outflow
+// and shows the wrong sign. Other (spending) categories don't map and leave the
+// type untouched. Returns the fields to merge onto the transaction, or null.
+export const CATEGORY_TO_TYPE = {
+  'Income': 'income',
+  'Refund': 'refund',
+  'Credit Card Payment': 'cc_payment',
+  'Transfer': 'transfer',
+};
+
+export function reconcileTypeForCategory(category, txn) {
+  const type = CATEGORY_TO_TYPE[category];
+  if (!type) return null;
+  // income/refund/cc_payment are inflows → positive. transfer keeps its
+  // directional heuristic (which reads the description for "from"/"to").
+  const signed_amount = type === 'transfer'
+    ? deriveSignedAmount({ ...txn, transaction_type: 'transfer', signed_amount: undefined })
+    : Math.abs(Number(txn.amount ?? txn.signed_amount ?? 0));
+  return { transaction_type: type, signed_amount };
+}
+
 export const DEFAULT_RULES = [
   // Groceries
   ['loblaws|\\bmetro\\b|sobeys|safeway|no frills|\\bcostco\\b|whole foods|farm boy|\\bt&t\\b|fortinos|food basics|freshco|provigo|\\biga\\b|zehrs|superstore|super-c|\\bmaxi\\b|adonis|\\bavril\\b|epicerie|grocery', 'Groceries'],

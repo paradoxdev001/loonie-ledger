@@ -22,7 +22,7 @@ A local-only household finance tracker split into native ES modules under `src/`
 | `src/main.js` | `App` component, view routing, `ReactDOM.createRoot` mount |
 | `src/data/builtinConverters.js` | `BUILTIN_CONVERTERS` array + `RETIRED_BUILTIN_KEYS` |
 | `src/engine/converter.js` | `applyConverter`, `buildYearResolver`, `pdfToText`, `pdfToRows`; sets PDF.js worker URL |
-| `src/engine/categorizer.js` | `autoCategorize`, `extractMerchant`, `inferTxnType`, `DEFAULT_RULES` |
+| `src/engine/categorizer.js` | `autoCategorize`, `extractMerchant`, `inferTxnType`, `reconcileTypeForCategory`, `DEFAULT_RULES` |
 | `src/engine/bootstrap.js` | `suggestCSVSpec`, `suggestPDFSpec` — heuristic spec suggester |
 | `src/llm/adapter.js` | `callLLM`, `getLLMConfig`/`setLLMConfig`, `SPEC_JSON_SCHEMA`, `normalizeWizardSpec` |
 | `src/db/store.js` | `STORE`, `dao`, `initDB`, `seedBuiltins`, `STORAGE_MODE` (live binding) |
@@ -107,6 +107,8 @@ The `period_regex` flow also supports end-date-only headers. When `period_groups
 ### Sign convention
 
 After normalization, `amount < 0` = money out (expense), `amount > 0` = money in (income/payment). `inferTxnType()` maps signed amount + account type to `transaction_type`: `expense`, `income`, `transfer`, `refund`, or `cc_payment`.
+
+Four categories *are* transaction types: **Income / Refund / Credit Card Payment / Transfer**. Reports classify inflow vs. spend off `transaction_type` + `signed_amount` (not category), so assigning one of these categories must also realign the type and re-sign the stored `signed_amount` — otherwise a `transfer` re-tagged as Income still reports as an outflow. `reconcileTypeForCategory(category, txn)` returns `{ transaction_type, signed_amount }` for those four (income/refund/cc_payment forced positive; transfer keeps its `deriveSignedAmount` directional heuristic) or `null` for ordinary spending categories. It's applied wherever a category is assigned: import (`Upload.js`), rule "apply to existing" and the manual category dropdown (`Transactions.js`). This matters especially for amount-conditioned category rules, whose whole point is re-tagging an otherwise-generic transfer.
 
 ### Persistence
 

@@ -5,7 +5,7 @@ import { dao } from '../db/store.js';
 import { ACCOUNT_TYPES, ACCOUNT_TYPE_LABEL } from '../constants.js';
 import { classNames, fingerprint, formatBatchSummary, getCurrency } from '../utils.js';
 import { detectFormat, readFileForParse, applyConverter, pdfToText } from '../engine/converter.js';
-import { autoCategorize, extractMerchant } from '../engine/categorizer.js';
+import { autoCategorize, extractMerchant, reconcileTypeForCategory } from '../engine/categorizer.js';
 import { Button, Card, CardHeader, Badge, Label, Input, Select, HelpLink } from './ui/index.js';
 import { PageContainer, PageHeader } from './Layout.js';
 import { BootstrapWizard, AIConverterWizard, InstitutionPicker } from './BootstrapWizard.js';
@@ -58,14 +58,21 @@ async function parseFileWithConverter(file, converter, { institution = '', accou
     institution: resolvedInstitution, account_name: acctName, statement_year: new Date().getFullYear()
   });
   const userRules = dao.listCategoryRules();
-  const enriched = await Promise.all(result.transactions.map(async t => ({
-    ...t,
-    merchant: t.merchant || extractMerchant(t.description),
-    category: t.category || autoCategorize(t, userRules),
-    is_excluded: false,
-    document_id, account_id,
-    fingerprint: await fingerprint([t.transaction_date, t.amount, t.transaction_type, t.description, acctName])
-  })));
+  const enriched = await Promise.all(result.transactions.map(async t => {
+    const category = t.category || autoCategorize(t, userRules);
+    // A rule that re-tags a transfer as Income (etc.) must also realign the
+    // type/sign, or the txn would import as the wrong reporting bucket.
+    const recon = t.category ? null : reconcileTypeForCategory(category, t);
+    return {
+      ...t,
+      ...(recon || {}),
+      merchant: t.merchant || extractMerchant(t.description),
+      category,
+      is_excluded: false,
+      document_id, account_id,
+      fingerprint: await fingerprint([t.transaction_date, t.amount, t.transaction_type, t.description, acctName])
+    };
+  }));
   let duplicateCount = 0;
   enriched.forEach(t => {
     if (dao.isDuplicate(account_id, t.fingerprint)) {
