@@ -38,6 +38,41 @@ function findReuseHint(filename) {
   return { doc: match, converter, account };
 }
 
+// Filename history (findReuseHint) only recognizes statements you've uploaded
+// before. This identifies a converter from the file's *contents* by actually
+// running each same-format converter and keeping whichever parses best — so a
+// first-time statement still gets matched. Returns { converter, spec } or null.
+async function detectConverterByContent(file, format) {
+  if (!format || format === 'unknown') return null;
+  const candidates = dao.findConverters({ format });
+  if (!candidates.length) return null;
+  let raw;
+  try { raw = await readFileForParse(file, format); }
+  catch { return null; }
+  const scored = [];
+  for (const converter of candidates) {
+    let spec;
+    try { spec = JSON.parse(converter.spec_json); } catch { continue; }
+    try {
+      const result = await applyConverter(file, raw, spec, {
+        institution: spec.institution || converter.institution || '',
+        account_name: spec.default_account || '',
+        statement_year: new Date().getFullYear()
+      });
+      const txns = result.transactions?.length || 0;
+      if (txns === 0) continue;
+      scored.push({ converter, spec, txns, errs: result.errors?.length || 0 });
+    } catch { /* converter doesn't fit this file */ }
+  }
+  if (!scored.length) return null;
+  // Prefer a clean parse, then the one that recognized the most transactions.
+  scored.sort((a, b) =>
+    (a.errs === 0 ? 0 : 1) - (b.errs === 0 ? 0 : 1) ||
+    b.txns - a.txns ||
+    a.errs - b.errs);
+  return { converter: scored[0].converter, spec: scored[0].spec };
+}
+
 async function parseFileWithConverter(file, converter, { institution = '', accountType = '', accountName = '' } = {}) {
   const spec = JSON.parse(converter.spec_json);
   const raw = await readFileForParse(file, converter.format);
@@ -206,6 +241,8 @@ export function UploadView() {
       setAccountName(hint.account?.account_name || '');
     } else {
       setReuseHint(null);
+      setInstitution('');
+      setAccountType('');
       setAccountName('');
     }
 
@@ -219,6 +256,17 @@ export function UploadView() {
         setPreviewText(text.slice(0, 2000));
       } catch (e) {
         setPreviewText('(PDF preview failed: ' + e.message + ')');
+      }
+    }
+
+    // No filename-history match — fall back to matching by file contents so we
+    // can still prefill the institution / account fields for a first-time file.
+    if (!hint || hint.converter.format !== detectedFormat) {
+      const detected = await detectConverterByContent(f, detectedFormat);
+      if (detected) {
+        setInstitution(detected.converter.institution || '');
+        setAccountType(detected.converter.account_type || '');
+        setAccountName(detected.spec.default_account || '');
       }
     }
   };
@@ -253,16 +301,32 @@ export function UploadView() {
         const sniff = await f.slice(0, 200).text().catch(() => '');
         const detectedFormat = detectFormat(f.name, sniff);
         const hint = findReuseHint(f.name);
-        if (!hint || hint.converter.format !== detectedFormat) {
+        let converter, meta;
+        if (hint && hint.converter.format === detectedFormat) {
+          converter = hint.converter;
+          meta = {
+            institution: hint.doc.institution || hint.converter.institution || '',
+            accountType: hint.account?.account_type || hint.converter.account_type || '',
+            accountName: hint.account?.account_name || ''
+          };
+        } else {
+          // First-time file: try to recognize it by contents instead of filename.
+          const detected = await detectConverterByContent(f, detectedFormat);
+          if (detected) {
+            converter = detected.converter;
+            meta = {
+              institution: detected.converter.institution || '',
+              accountType: detected.converter.account_type || '',
+              accountName: detected.spec.default_account || ''
+            };
+          }
+        }
+        if (!converter) {
           stats.skippedNoHint++;
           stats.skippedNames.push(f.name);
           continue;
         }
-        const parsed = await parseFileWithConverter(f, hint.converter, {
-          institution: hint.doc.institution || hint.converter.institution || '',
-          accountType: hint.account?.account_type || hint.converter.account_type || '',
-          accountName: hint.account?.account_name || ''
-        });
+        const parsed = await parseFileWithConverter(f, converter, meta);
         const clean = parsed.errors.length === 0 && parsed.duplicateCount === 0 && parsed.transactions.length > 0;
         if (clean) {
           const toInsert = parsed.transactions.map(t => ({
