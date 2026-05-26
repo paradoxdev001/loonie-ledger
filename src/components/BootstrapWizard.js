@@ -21,6 +21,21 @@ function extractSpecJson(text) {
   return m ? m[0] : null;
 }
 
+// Models hand-writing regex-laden specs routinely emit single backslashes
+// (`\s`, `\d`, `\.`, `\$`) that aren't valid JSON escapes, so JSON.parse throws
+// "Bad escaped character". Parse as-is first (valid pastes untouched); on failure,
+// double any backslash that isn't already a valid JSON escape and retry once.
+function parseSpecJsonLenient(json) {
+  try {
+    return JSON.parse(json);
+  } catch (e) {
+    // Consume valid `\\` pairs first so they're left intact; double any lone
+    // backslash that isn't a valid JSON escape (`\s` → `\\s`, `\$` → `\\$`, …).
+    const repaired = json.replace(/\\\\|\\(?!["\/bfnrtu])/g, m => m.length === 2 ? m : '\\\\');
+    return JSON.parse(repaired); // throws again if still broken; caller reports it
+  }
+}
+
 // Small numbered step badge for the clipboard wizard's instructions. The active
 // (current) step is highlighted green; done/upcoming steps stay gray.
 function clipStepNum(n, active = false) {
@@ -657,7 +672,7 @@ export function AIConverterWizard({ open, onClose, file, format, defaults, onSav
     const json = extractSpecJson(clipResponse);
     if (!json) { setFatal('Could not find a JSON spec in that paste — paste the full JSON the model returned.'); return; }
     let parsed;
-    try { parsed = JSON.parse(json); } catch (e) { setFatal('That paste is not valid JSON: ' + e.message); return; }
+    try { parsed = parseSpecJsonLenient(json); } catch (e) { setFatal('That paste is not valid JSON: ' + e.message); return; }
     setFatal(null); setBusy(true);
     try {
       const newSpec = normalizeWizardSpec(parsed);
