@@ -1,5 +1,5 @@
 import html from '../html.js';
-import { useState, useEffect, useRef, Fragment } from '../react.js';
+import { useState, useEffect, useRef, useMemo, Fragment } from '../react.js';
 import { ACCOUNT_TYPES, ACCOUNT_TYPE_LABEL, KNOWN_INSTITUTIONS } from '../constants.js';
 import { formatMoney, classNames, uid, getCurrency } from '../utils.js';
 import { dao } from '../db/store.js';
@@ -184,13 +184,31 @@ export function ConverterMetaForm({ meta, setMeta }) {
 
 export function InstitutionPicker({ value, onChange }) {
   const [custom, setCustom] = useState(false);
+  // Merge previously-used institutions (from saved converters + accounts) with the
+  // built-in list, so a custom institution added via "Add new…" persists in the
+  // dropdown on later uploads instead of having to be re-typed each time.
+  const options = useMemo(() => {
+    const seen = new Set();
+    const result = [];
+    const add = name => {
+      const n = (name || '').trim();
+      if (!n || n === 'Other' || seen.has(n)) return;
+      seen.add(n);
+      result.push(n);
+    };
+    KNOWN_INSTITUTIONS.forEach(i => i !== 'Other' && add(i));
+    dao.listConverters().forEach(c => add(c.institution));
+    dao.listAccounts().forEach(a => add(a.institution));
+    result.push('Other');
+    return result;
+  }, []);
   return html`<div class="grid grid-cols-2 gap-2">
     ${!custom ? html`<${Select} value=${value || ''} onChange=${e => {
       if (e.target.value === '__custom__') { setCustom(true); onChange(''); }
       else onChange(e.target.value);
     }}>
       <option value="">Select institution…</option>
-      ${KNOWN_INSTITUTIONS.map(i => html`<option key=${i} value=${i}>${i}</option>`)}
+      ${options.map(i => html`<option key=${i} value=${i}>${i}</option>`)}
       <option value="__custom__">+ Add new…</option>
     </${Select}>` : html`<${Input}
       autoFocus
