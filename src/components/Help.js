@@ -90,10 +90,17 @@ export function HelpView() {
 
   const jump = (id) => dispatch({ type: 'SET_VIEW', view: 'help', anchor: id });
 
+  const goBack = () => dispatch({ type: 'SET_VIEW', view: state.previousView });
+
   return html`<${PageContainer}>
     <${PageHeader}
       title="Help"
       description="How Loonie Ledger works — from importing statements to teaching the AI a new bank format."
+      action=${state.previousView && html`<button
+        type="button"
+        onClick=${goBack}
+        class="inline-flex items-center gap-1.5 text-sm text-ink-2 hover:text-ink transition-colors"
+      >← Back</button>`}
     />
 
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
