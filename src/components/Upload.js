@@ -16,7 +16,7 @@ function normalizeFilenameForMatch(name) {
     .replace(/\d{4}[-\/]\d{1,2}[-\/]\d{1,2}/g, '')
     .replace(/\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4}/g, '')
     .replace(/\d{4}[-\/]\d{1,2}/g, '')
-    .replace(/(january|february|march|april|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)/gi, '')
+    .replace(/(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)/gi, '')
     .replace(/\d{4,}/g, '')
     .replace(/[\s\-_]+/g, ' ')
     .trim()
