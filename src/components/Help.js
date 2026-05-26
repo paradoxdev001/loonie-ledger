@@ -96,16 +96,16 @@ export function HelpView() {
     <${PageHeader}
       title="Help"
       description="How Loonie Ledger works — from importing statements to teaching the AI a new bank format."
-      action=${state.previousView && html`<button
-        type="button"
-        onClick=${goBack}
-        class="inline-flex items-center gap-1.5 text-sm text-ink-2 hover:text-ink transition-colors"
-      >← Back</button>`}
     />
 
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
       <aside class="lg:col-span-1">
         <div class="lg:sticky lg:top-20">
+          ${state.previousView && html`<button
+            type="button"
+            onClick=${goBack}
+            class="flex items-center gap-1.5 text-sm text-ink-2 hover:text-ink transition-colors mb-4"
+          >← Back</button>`}
           <${TOC} active=${anchor} onJump=${jump} />
         </div>
       </aside>
