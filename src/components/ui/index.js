@@ -125,7 +125,7 @@ export function HelpLink({ anchor, label = 'More info', className = '' }) {
   const { dispatch } = useApp();
   return html`<button
     type="button"
-    onClick=${() => dispatch({ type: 'SET_VIEW', view: 'help', anchor })}
+    onClick=${() => dispatch({ type: 'OPEN_HELP_PANEL', anchor })}
     title="Open help"
     class=${classNames('inline-flex items-center gap-1 text-xs font-medium text-maple-deep hover:underline', className)}
   >ⓘ ${label}</button>`;

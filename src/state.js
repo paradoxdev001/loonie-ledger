@@ -11,13 +11,16 @@ export const initialState = {
   batchStats: null,
   refreshKey: 0,
   helpAnchor: null,
-  previousView: null
+  previousView: null,
+  helpPanel: null
 };
 
 export function reducer(state, action) {
   switch (action.type) {
-    case 'SET_READY':       return { ...state, ready: true, view: action.view || state.view };
-    case 'SET_VIEW':        return { ...state, previousView: state.view, view: action.view || state.view, helpAnchor: action.anchor || null };
+    case 'SET_READY':        return { ...state, ready: true, view: action.view || state.view };
+    case 'SET_VIEW':         return { ...state, previousView: action.view !== state.view ? state.view : state.previousView, view: action.view || state.view, helpAnchor: action.anchor || null };
+    case 'OPEN_HELP_PANEL':  return { ...state, helpPanel: { anchor: action.anchor } };
+    case 'CLOSE_HELP_PANEL': return { ...state, helpPanel: null };
     case 'TOAST':           return { ...state, toast: action.toast };
     case 'CLEAR_TOAST':     return { ...state, toast: null };
     case 'SET_REVIEW':      return { ...state, pendingReview: action.payload, view: 'review' };

@@ -69,12 +69,305 @@ function TOC({ active, onJump }) {
   </nav>`;
 }
 
+// Inline text link that jumps to another help section.
+function Jump({ id, onJump, children }) {
+  return html`<button type="button" onClick=${() => onJump(id)} class="text-maple-deep hover:underline font-medium">${children}</button>`;
+}
+
+// All section content, shared between the full Help page and the slide-over panel.
+function HelpBody({ onJump }) {
+  return html`<div>
+
+    <${Section} id="getting-started" title="Getting started">
+      <${P}>Loonie Ledger is a private, local-only household finance tracker. It runs entirely
+        in your browser — no account, no cloud sync, no bank-linking service. You feed it the
+        CSV and PDF statements you already download from your bank, and it turns them into
+        searchable transactions, categories, and reports.</${P}>
+      <${Sub}>The three-step flow</${Sub}>
+      <${UL}>
+        <li><strong>Download your statement</strong> from your bank — a CSV export or a PDF statement, the same way you always have.</li>
+        <li><strong>Drop it into Upload.</strong> Loonie Ledger detects the format, finds a matching converter, and parses the transactions.</li>
+        <li><strong>Review and explore.</strong> Confirm the parsed rows, then use Transactions and Reports across all your accounts.</li>
+      </${UL}>
+      <${P} className="mt-3">No sign-up, no subscription, no bank connections required.
+        See <${Jump} onJump=${onJump} id="privacy">Privacy & your data</${Jump}> for exactly where everything is stored.</${P}>
+    </${Section}>
+
+    <${Section} id="privacy" title="Privacy & your data">
+      <${P}>Everything you import stays inside this browser. Your transactions are never sent
+        to any server. There is exactly one optional exception, described in
+        ${' '}<${Jump} onJump=${onJump} id="ai-converters">AI converter setup</${Jump}>.</${P}>
+      <${Sub}>Where your data lives</${Sub}>
+      <${P}>On startup the app picks the best available storage: <${C}>IndexedDB</${C}> first,
+        then <${C}>localStorage</${C}>, then in-memory as a last resort. The whole database is
+        one JSON blob. The current mode is shown in the footer at the bottom of every page.</${P}>
+      <${Note}>If the footer says <strong>In-memory</strong>, your data will vanish when you
+        close the tab. Use <strong>Settings → Export backup</strong> to save it to a file.</${Note}>
+      <${Sub}>API keys</${Sub}>
+      <${P}>If you connect an AI provider, your API key is stored only in this browser's local
+        storage and is <strong>excluded from backup exports</strong>. It is never written into
+        the database blob.</${P}>
+    </${Section}>
+
+    <${Section} id="uploads" title="Uploading statements">
+      <${P}>Drag a file onto the drop zone in the Upload view, or click to browse. CSV, TSV,
+        TXT, and PDF are accepted. A preview of the raw text appears so you can confirm you
+        picked the right file.</${P}>
+      <${Sub}>Choosing a converter</${Sub}>
+      <${P}>Pick the <strong>institution</strong>, optionally an <strong>account type</strong>,
+        and an <strong>account name</strong> (e.g. "TD Visa — Joint"). Loonie Ledger then shows
+        the converters that match. Choose one and it parses the document into a review screen.
+        If no converter matches, you can build one — see
+        ${' '}<${Jump} onJump=${onJump} id="converters">Converters</${Jump}> and
+        ${' '}<${Jump} onJump=${onJump} id="ai-converters">AI converter setup</${Jump}>.</${P}>
+      <${Sub}>Filename reuse</${Sub}>
+      <${P}>When you drop a file whose name matches a previous upload, Loonie Ledger offers to
+        reuse the same converter and account in one click. Matching ignores dates and statement
+        numbers, so <${C}>Visa Statement-6503 2025-01-09.pdf</${C}> and the February version are
+        recognized as the same recurring statement.</${P}>
+      <${Sub}>Batch upload</${Sub}>
+      <${P}>Drop several files at once. Any file that matches a previous upload by filename is
+        parsed automatically; clean ones (no warnings, no duplicates) are imported straight away,
+        and anything needing attention is queued for review. Unrecognized files are listed so you
+        can drop them individually to set up a converter.</${P}>
+    </${Section}>
+
+    <${Section} id="converters" title="Converters">
+      <${P}>A <strong>converter</strong> is a small, reusable recipe that teaches Loonie Ledger
+        how to read one institution's document format (for example "RBC Visa PDF" or "TD Chequing
+        CSV"). Parsing is <strong>100% deterministic</strong> — the converter is just a set of
+        rules; the same file always produces the same transactions.</${P}>
+      <${Sub}>Built-in vs. custom</${Sub}>
+      <${P}>Loonie Ledger ships with built-in converters for
+        ${' '}<strong>TD, RBC, Amex, and BMO</strong> (chequing, credit card, and statement formats),
+        plus a generic CSV fallback. Converters you create or import are marked
+        ${' '}<strong>Custom</strong>. Manage all of them in the <strong>Converters</strong> view, where
+        you can view/edit the spec, see how many imports used it, and export or delete it.
+        Deleting a converter never affects already-imported transactions.</${P}>
+      <${Sub}>How a converter is described</${Sub}>
+      <${P}>Each converter stores a JSON <em>spec</em>. CSV specs map columns to fields; PDF specs
+        use a regular expression (or column x-coordinates) to pull fields out of each line.</${P}>
+      <${P} className="mt-2">A simple CSV spec:</${P}>
+      <${Pre}>${`{
+  "type": "csv",
+  "has_header": true,
+  "delimiter": ",",
+  "columns": { "transaction_date": "Date",
+               "description": "Description",
+               "amount": "Amount" },
+  "date_format": "MM/DD/YYYY",
+  "amount_handling": "single_signed",
+  "amount_sign": "natural"
+}`}</${Pre}>
+      <${P} className="mt-3">A line-based PDF spec:</${P}>
+      <${Pre}>${`{
+  "type": "pdf",
+  "line_regex": "^(\\\\w{3} \\\\d{1,2})\\\\s+(.+?)\\\\s+(-?\\\\$[\\\\d,.]+)$",
+  "groups": { "transaction_date": 1, "description": 2, "amount": 3 },
+  "date_format": "MMM DD",
+  "amount_sign": "flipped"
+}`}</${Pre}>
+      <${P} className="mt-3"><strong>Sign convention:</strong> after parsing, a negative amount
+        means money out (an expense) and a positive amount means money in. Credit-card statements
+        that print charges as positive use <${C}>amount_sign: "flipped"</${C}> to normalize them.</${P}>
+      <${Sub}>Sharing converters</${Sub}>
+      <${P}>Export a converter to a small JSON file from the Converters view and share it; the
+        recipient imports it with <strong>Import converter</strong>. The shared file contains only
+        the parsing rules — no transactions and no account nickname.</${P}>
+    </${Section}>
+
+    <${Section} id="ai-converters" title="AI converter setup">
+      <${P}>This is the feature that lets Loonie Ledger handle <em>any</em> bank, not just the
+        built-in ones. When no converter exists for your statement, choose
+        ${' '}<strong>✨ Set up with AI</strong> and an assistant will author a converter for you by
+        looking at the structure of your document — then hand you a normal, deterministic
+        converter that's reused automatically from then on.</${P}>
+
+      <${Sub}>What the AI sees (and what it doesn't)</${Sub}>
+      <${P}>The model's <strong>only</strong> job is to write the parser spec. It receives a short
+        excerpt of your statement so it can learn the <em>layout</em> — column positions, date
+        formats, where the amount sits. It never receives your imported transactions, and once the
+        spec is saved, all parsing happens locally with no further AI involvement.</${P}>
+      <${Note}><strong>You can redact before anything is sent.</strong> After the privacy notice, the
+        wizard shows you the exact statement sample in an editable box — this applies to both the API
+        and clipboard paths. Edit out your name and address, full account numbers (last 4 digits are
+        fine), and exact balances. 5–10 representative rows are plenty — dates, merchant names, and
+        amounts can stay, since they help the AI understand the format.</${Note}>
+
+      <${Sub}>Two ways to talk to the model</${Sub}>
+      <${P}><strong>Option 1 — API key.</strong> You supply an API key from
+        ${' '}<strong>Anthropic (Claude)</strong> or <strong>OpenAI (GPT)</strong>. The key is stored only
+        in this browser's local storage, sent directly to that provider, and excluded from backup
+        exports. This mode runs the self-correcting validation loop automatically.</${P}>
+      <${P}><strong>Option 2 — Clipboard (no API key).</strong> The wizard hands you a ready-made
+        prompt; paste it into <strong>Claude.ai</strong> or <strong>ChatGPT</strong>, then paste the
+        spec the model returns back into the wizard. The spec is parsed locally and shown in the live
+        preview, exactly like the API path. If it isn't perfect, copy the follow-up prompt (which
+        bundles the engine's validation result) and repeat — one copy, one paste per round.</${P}>
+      <${Note}>Because this page loads libraries from public CDNs, treat the key as exposed to the
+        page — use a key you can rotate, and never share it. You can manage or clear it any time in
+        ${' '}<strong>Settings → AI assistant</strong>.</${Note}>
+
+      <${Sub}>How the wizard works</${Sub}>
+      <${UL}>
+        <li>It extracts an excerpt of your document. For PDFs it also samples the x-coordinates of
+          each item, so even true table layouts (debit vs. credit by column) can be solved.</li>
+        <li>The AI proposes a spec, which is <strong>run locally</strong> and shown in a live preview.
+          With an API key, the wizard also <strong>feeds any parse errors back to the model
+          automatically</strong>, up to two silent retries, before handing control to you.</li>
+        <li>You refine in plain language ("the dates are off by a month", "amounts should be
+          flipped") — typed directly with an API key, or copied as a follow-up prompt in clipboard
+          mode — while watching a <strong>live preview</strong> of the first parsed transactions and a
+          parsed/warnings count.</li>
+        <li>Save once the preview looks right — you only need at least one parsed transaction, since
+          a valid converter can still emit harmless warnings.</li>
+      </${UL}>
+      <${P} className="mt-3">The saved converter is indistinguishable from a hand-written one and is
+        matched to future uploads just like a built-in.</${P}>
+      <${P} className="mt-3"><strong>No API key?</strong> Use the clipboard option above, or build a
+        converter by hand with <strong>Bootstrap manually</strong>, which proposes a spec from
+        heuristics and lets you adjust the column/regex mapping with a live preview.</${P}>
+    </${Section}>
+
+    <${Section} id="review" title="Reviewing before import">
+      <${P}>Parsing a document opens the <strong>Review</strong> screen so nothing is imported
+        blindly. Each row can be edited inline — date, description, merchant, category, and type —
+        excluded, or deleted before you commit.</${P}>
+      <${Sub}>Duplicates</${Sub}>
+      <${P}>Every transaction gets a fingerprint from its date, amount, type, description, and
+        account. Rows that match something already imported are flagged as
+        ${' '}<strong>duplicates</strong> and unchecked automatically, so re-importing the same statement
+        twice never creates doubles.</${P}>
+      <${Sub}>Filters & warnings</${Sub}>
+      <${P}>Filter the list to <em>Duplicates</em>, <em>Excluded</em>, or <em>Issues only</em>. If
+        the converter produced any non-fatal warnings (for example a statement total that didn't add
+        up to the penny), they appear in an expandable <strong>parse warnings</strong> panel. When
+        reviewing a batch, a progress banner shows which file you're on.</${P}>
+    </${Section}>
+
+    <${Section} id="transactions" title="Transactions">
+      <${P}>The Transactions view is the searchable ledger across every account. Filter by date
+        range, account, category, or free-text search; sort any column; and page through large sets.</${P}>
+      <${UL}>
+        <li><strong>Inline category</strong> — change a transaction's category right in the table.</li>
+        <li><strong>Exclude</strong> — tick a row to keep it out of reports without deleting it.</li>
+        <li><strong>+rule</strong> — turn a transaction into a reusable category rule (see
+          ${' '}<${Jump} onJump=${onJump} id="categorization">Categories & rules</${Jump}>).</li>
+        <li><strong>Source ⓘ</strong> — see which statement a transaction came from.</li>
+        <li><strong>🔁</strong> marks charges detected as recurring.</li>
+        <li><strong>Export CSV</strong> downloads the currently filtered rows.</li>
+      </${UL}>
+    </${Section}>
+
+    <${Section} id="categorization" title="Categories & rules">
+      <${P}>Each transaction has a <strong>type</strong> (expense, income, transfer, refund, or
+        CC payment) inferred from its amount sign and account, and a <strong>category</strong>${' '}
+        (Groceries, Dining, Subscriptions, …).</${P}>
+      <${Sub}>Automatic categorization</${Sub}>
+      <${P}>On import, descriptions are matched against a built-in library of merchant
+        keywords (grocery chains, restaurants, fuel stations, and so on).
+        Anything unmatched lands in <em>Other</em>.</${P}>
+      <${Sub}>Your own rules</${Sub}>
+      <${P}>Create rules from the <strong>+rule</strong> button on any transaction. A rule has a
+        ${' '}<strong>pattern</strong>, a <strong>match type</strong> (<${C}>contains</${C}>,
+        ${' '}<${C}>startswith</${C}>, or <${C}>regex</${C}>), a target category, and a
+        ${' '}<strong>priority</strong> (higher runs first). You can apply a new rule to all existing
+        transactions at once.</${P}>
+      <${Sub}>AI Suggest</${Sub}>
+      <${P}>When transactions are uncategorized, the <strong>AI Suggest</strong> button offers
+        bulk suggestions. Two ways to run it:</${P}>
+      <${UL}>
+        <li><strong>With an API key</strong> — it categorizes in batches automatically.</li>
+        <li><strong>Clipboard, no key</strong> — copy the generated prompt, paste it into Claude.ai
+          or ChatGPT, and paste the JSON answer back.</li>
+      </${UL}>
+      <${P} className="mt-2">Either way you review every suggestion, uncheck any you don't want, and
+        optionally save them as rules so future imports categorize themselves.</${P}>
+      <${Note}><strong>What this sends.</strong> Unlike the rest of the app, AI Suggest sends data to
+        an AI provider: just your <em>transaction descriptions</em> (merchant text), deduplicated and
+        limited to the uncategorized ones. Amounts, dates, balances, and account names are never sent.
+        Descriptions can still be personal — subscriptions, or e-transfer recipient names — and the
+        modal lets you preview the exact list before running. Note the two paths differ in privacy:
+        the <strong>API key</strong> path goes to the provider under its API terms (generally not used
+        for training), while the <strong>clipboard</strong> path routes through consumer Claude.ai /
+        ChatGPT, which may retain or train on chats unless you've opted out in their settings.</${Note}>
+    </${Section}>
+
+    <${Section} id="reports" title="Reports">
+      <${P}>Reports summarize spending over a date range you control with quick presets (this
+        month, last month, 3/6 months, this/last year) or custom dates. You can scope to one
+        account and choose whether to <strong>exclude transfers</strong> and
+        ${' '}<strong>CC payments</strong> so they don't distort spending totals.</${P}>
+      <${UL}>
+        <li><strong>Summary tiles</strong> — total expenses, total income, net, and average per month.</li>
+        <li><strong>Monthly expenses</strong> — expenses vs. income per month.</li>
+        <li><strong>By category</strong> — a breakdown of where the money went.</li>
+        <li><strong>Top merchants</strong> — click a row to expand its individual transactions.</li>
+        <li><strong>Month-over-month</strong> — percentage change vs. the previous month.</li>
+        <li><strong>Recurring charges</strong> — see <${Jump} onJump=${onJump} id="recurring">below</${Jump}>.</li>
+      </${UL}>
+      <${P} className="mt-2">Your report range and toggles are remembered between visits.</${P}>
+    </${Section}>
+
+    <${Section} id="recurring" title="Recurring charges">
+      <${P}>Loonie Ledger flags likely subscriptions and other monthly debits automatically. A
+        merchant is treated as recurring when it has:</${P}>
+      <${UL}>
+        <li>at least <strong>3 charges</strong> from the same merchant,</li>
+        <li>spaced roughly <strong>25–35 days apart</strong>, and</li>
+        <li>within about <strong>10% of the typical (median) amount</strong>.</li>
+      </${UL}>
+      <${P} className="mt-2">The Reports table lists each one with its typical amount, cadence, last
+        seen date, and an estimated monthly total. Matching charges are marked with 🔁 in the
+        Transactions view too.</${P}>
+    </${Section}>
+
+    <${Section} id="history" title="Upload history">
+      <${P}>The History view is a log of every document you've uploaded — filename, institution,
+        account, converter used, and status. Deleting a document here also removes the transactions
+        that came from it (you're told how many before confirming), which is the clean way to undo a
+        bad import.</${P}>
+    </${Section}>
+
+    <${Section} id="settings" title="Settings">
+      <${UL}>
+        <li><strong>Date format</strong> — ISO (<${C}>2025-05-31</${C}>) or friendly (<${C}>May 31st, 2025</${C}>).</li>
+        <li><strong>AI assistant</strong> — choose your provider and save/clear the API key used by
+          the converter wizard. The key never touches your transactions or backups.</li>
+        <li><strong>Export backup</strong> — download all transactions, accounts, and converters as
+          one JSON file.</li>
+        <li><strong>Import backup</strong> — replace all data from a previously exported file.</li>
+        <li><strong>Factory reset</strong> — delete everything and restore the built-in converters.</li>
+      </${UL}>
+    </${Section}>
+
+    <${Section} id="faq" title="FAQ & troubleshooting">
+      <${Sub}>My bank isn't built in.</${Sub}>
+      <${P}>Drop a statement, then use <strong>✨ Set up with AI</strong> (or Bootstrap manually) to
+        create a converter. After that, uploads from that bank work like any built-in.</${P}>
+      <${Sub}>The dates on my PDF are wrong.</${Sub}>
+      <${P}>PDF transaction lines often print only the month and day, so the converter recovers the
+        year from the statement's period header. If that header doesn't match, the converter shows a
+        warning in the review screen — adjust the converter (or ask the AI wizard to fix it).</${P}>
+      <${Sub}>I see a "total didn't match" warning.</${Sub}>
+      <${P}>Some converters cross-check the parsed sum against a printed statement total. A mismatch
+        is a <strong>non-fatal</strong> heads-up to double-check a few rows; it doesn't block import.</${P}>
+      <${Sub}>Will re-importing a statement duplicate everything?</${Sub}>
+      <${P}>No. Duplicate detection (see <${Jump} onJump=${onJump} id="review">Reviewing</${Jump}>)
+        fingerprints each transaction and skips ones you already have.</${P}>
+      <${Sub}>The footer says I'm working in memory.</${Sub}>
+      <${P}>Your browser blocked persistent storage. Use <strong>Settings → Export backup</strong>${' '}
+        before closing the tab so you don't lose your data.</${P}>
+    </${Section}>
+
+  </div>`;
+}
+
 export function HelpView() {
   const { state, dispatch } = useApp();
   const anchor = state.helpAnchor;
   const scrolledFor = useRef(null);
 
-  // Scroll the requested section into view once the view has rendered.
   useEffect(() => {
     if (!anchor) {
       window.scrollTo({ top: 0 });
@@ -89,7 +382,6 @@ export function HelpView() {
   }, [anchor]);
 
   const jump = (id) => dispatch({ type: 'SET_VIEW', view: 'help', anchor: id });
-
   const goBack = () => dispatch({ type: 'SET_VIEW', view: state.previousView });
 
   return html`<${PageContainer}>
@@ -112,296 +404,107 @@ export function HelpView() {
 
       <div class="lg:col-span-3">
         <${Card} className="p-6 sm:p-8">
-
-          <${Section} id="getting-started" title="Getting started">
-            <${P}>Loonie Ledger is a private, local-only household finance tracker. It runs entirely
-              in your browser — no account, no cloud sync, no bank-linking service. You feed it the
-              CSV and PDF statements you already download from your bank, and it turns them into
-              searchable transactions, categories, and reports.</${P}>
-            <${Sub}>The three-step flow</${Sub}>
-            <${UL}>
-              <li><strong>Download your statement</strong> from your bank — a CSV export or a PDF statement, the same way you always have.</li>
-              <li><strong>Drop it into Upload.</strong> Loonie Ledger detects the format, finds a matching converter, and parses the transactions.</li>
-              <li><strong>Review and explore.</strong> Confirm the parsed rows, then use Transactions and Reports across all your accounts.</li>
-            </${UL}>
-            <${P} className="mt-3">No sign-up, no subscription, no bank connections required.
-              See <${Jump} onJump=${jump} id="privacy">Privacy & your data</${Jump}> for exactly where everything is stored.</${P}>
-          </${Section}>
-
-          <${Section} id="privacy" title="Privacy & your data">
-            <${P}>Everything you import stays inside this browser. Your transactions are never sent
-              to any server. There is exactly one optional exception, described in
-              ${' '}<${Jump} onJump=${jump} id="ai-converters">AI converter setup</${Jump}>.</${P}>
-            <${Sub}>Where your data lives</${Sub}>
-            <${P}>On startup the app picks the best available storage: <${C}>IndexedDB</${C}> first,
-              then <${C}>localStorage</${C}>, then in-memory as a last resort. The whole database is
-              one JSON blob. The current mode is shown in the footer at the bottom of every page.</${P}>
-            <${Note}>If the footer says <strong>In-memory</strong>, your data will vanish when you
-              close the tab. Use <strong>Settings → Export backup</strong> to save it to a file.</${Note}>
-            <${Sub}>API keys</${Sub}>
-            <${P}>If you connect an AI provider, your API key is stored only in this browser's local
-              storage and is <strong>excluded from backup exports</strong>. It is never written into
-              the database blob.</${P}>
-          </${Section}>
-
-          <${Section} id="uploads" title="Uploading statements">
-            <${P}>Drag a file onto the drop zone in the Upload view, or click to browse. CSV, TSV,
-              TXT, and PDF are accepted. A preview of the raw text appears so you can confirm you
-              picked the right file.</${P}>
-            <${Sub}>Choosing a converter</${Sub}>
-            <${P}>Pick the <strong>institution</strong>, optionally an <strong>account type</strong>,
-              and an <strong>account name</strong> (e.g. "TD Visa — Joint"). Loonie Ledger then shows
-              the converters that match. Choose one and it parses the document into a review screen.
-              If no converter matches, you can build one — see
-              ${' '}<${Jump} onJump=${jump} id="converters">Converters</${Jump}> and
-              ${' '}<${Jump} onJump=${jump} id="ai-converters">AI converter setup</${Jump}>.</${P}>
-            <${Sub}>Filename reuse</${Sub}>
-            <${P}>When you drop a file whose name matches a previous upload, Loonie Ledger offers to
-              reuse the same converter and account in one click. Matching ignores dates and statement
-              numbers, so <${C}>Visa Statement-6503 2025-01-09.pdf</${C}> and the February version are
-              recognized as the same recurring statement.</${P}>
-            <${Sub}>Batch upload</${Sub}>
-            <${P}>Drop several files at once. Any file that matches a previous upload by filename is
-              parsed automatically; clean ones (no warnings, no duplicates) are imported straight away,
-              and anything needing attention is queued for review. Unrecognized files are listed so you
-              can drop them individually to set up a converter.</${P}>
-          </${Section}>
-
-          <${Section} id="converters" title="Converters">
-            <${P}>A <strong>converter</strong> is a small, reusable recipe that teaches Loonie Ledger
-              how to read one institution's document format (for example "RBC Visa PDF" or "TD Chequing
-              CSV"). Parsing is <strong>100% deterministic</strong> — the converter is just a set of
-              rules; the same file always produces the same transactions.</${P}>
-            <${Sub}>Built-in vs. custom</${Sub}>
-            <${P}>Loonie Ledger ships with built-in converters for
-              ${' '}<strong>TD, RBC, Amex, and BMO</strong> (chequing, credit card, and statement formats),
-              plus a generic CSV fallback. Converters you create or import are marked
-              ${' '}<strong>Custom</strong>. Manage all of them in the <strong>Converters</strong> view, where
-              you can view/edit the spec, see how many imports used it, and export or delete it.
-              Deleting a converter never affects already-imported transactions.</${P}>
-            <${Sub}>How a converter is described</${Sub}>
-            <${P}>Each converter stores a JSON <em>spec</em>. CSV specs map columns to fields; PDF specs
-              use a regular expression (or column x-coordinates) to pull fields out of each line.</${P}>
-            <${P} className="mt-2">A simple CSV spec:</${P}>
-            <${Pre}>${`{
-  "type": "csv",
-  "has_header": true,
-  "delimiter": ",",
-  "columns": { "transaction_date": "Date",
-               "description": "Description",
-               "amount": "Amount" },
-  "date_format": "MM/DD/YYYY",
-  "amount_handling": "single_signed",
-  "amount_sign": "natural"
-}`}</${Pre}>
-            <${P} className="mt-3">A line-based PDF spec:</${P}>
-            <${Pre}>${`{
-  "type": "pdf",
-  "line_regex": "^(\\\\w{3} \\\\d{1,2})\\\\s+(.+?)\\\\s+(-?\\\\$[\\\\d,.]+)$",
-  "groups": { "transaction_date": 1, "description": 2, "amount": 3 },
-  "date_format": "MMM DD",
-  "amount_sign": "flipped"
-}`}</${Pre}>
-            <${P} className="mt-3"><strong>Sign convention:</strong> after parsing, a negative amount
-              means money out (an expense) and a positive amount means money in. Credit-card statements
-              that print charges as positive use <${C}>amount_sign: "flipped"</${C}> to normalize them.</${P}>
-            <${Sub}>Sharing converters</${Sub}>
-            <${P}>Export a converter to a small JSON file from the Converters view and share it; the
-              recipient imports it with <strong>Import converter</strong>. The shared file contains only
-              the parsing rules — no transactions and no account nickname.</${P}>
-          </${Section}>
-
-          <${Section} id="ai-converters" title="AI converter setup">
-            <${P}>This is the feature that lets Loonie Ledger handle <em>any</em> bank, not just the
-              built-in ones. When no converter exists for your statement, choose
-              ${' '}<strong>✨ Set up with AI</strong> and an assistant will author a converter for you by
-              looking at the structure of your document — then hand you a normal, deterministic
-              converter that's reused automatically from then on.</${P}>
-
-            <${Sub}>What the AI sees (and what it doesn't)</${Sub}>
-            <${P}>The model's <strong>only</strong> job is to write the parser spec. It receives a short
-              excerpt of your statement so it can learn the <em>layout</em> — column positions, date
-              formats, where the amount sits. It never receives your imported transactions, and once the
-              spec is saved, all parsing happens locally with no further AI involvement.</${P}>
-            <${Note}><strong>You can redact before anything is sent.</strong> After the privacy notice, the
-              wizard shows you the exact statement sample in an editable box — this applies to both the API
-              and clipboard paths. Edit out your name and address, full account numbers (last 4 digits are
-              fine), and exact balances. 5–10 representative rows are plenty — dates, merchant names, and
-              amounts can stay, since they help the AI understand the format.</${Note}>
-
-            <${Sub}>Two ways to talk to the model</${Sub}>
-            <${P}><strong>Option 1 — API key.</strong> You supply an API key from
-              ${' '}<strong>Anthropic (Claude)</strong> or <strong>OpenAI (GPT)</strong>. The key is stored only
-              in this browser's local storage, sent directly to that provider, and excluded from backup
-              exports. This mode runs the self-correcting validation loop automatically.</${P}>
-            <${P}><strong>Option 2 — Clipboard (no API key).</strong> The wizard hands you a ready-made
-              prompt; paste it into <strong>Claude.ai</strong> or <strong>ChatGPT</strong>, then paste the
-              spec the model returns back into the wizard. The spec is parsed locally and shown in the live
-              preview, exactly like the API path. If it isn't perfect, copy the follow-up prompt (which
-              bundles the engine's validation result) and repeat — one copy, one paste per round.</${P}>
-            <${Note}>Because this page loads libraries from public CDNs, treat the key as exposed to the
-              page — use a key you can rotate, and never share it. You can manage or clear it any time in
-              ${' '}<strong>Settings → AI assistant</strong>.</${Note}>
-
-            <${Sub}>How the wizard works</${Sub}>
-            <${UL}>
-              <li>It extracts an excerpt of your document. For PDFs it also samples the x-coordinates of
-                each item, so even true table layouts (debit vs. credit by column) can be solved.</li>
-              <li>The AI proposes a spec, which is <strong>run locally</strong> and shown in a live preview.
-                With an API key, the wizard also <strong>feeds any parse errors back to the model
-                automatically</strong>, up to two silent retries, before handing control to you.</li>
-              <li>You refine in plain language ("the dates are off by a month", "amounts should be
-                flipped") — typed directly with an API key, or copied as a follow-up prompt in clipboard
-                mode — while watching a <strong>live preview</strong> of the first parsed transactions and a
-                parsed/warnings count.</li>
-              <li>Save once the preview looks right — you only need at least one parsed transaction, since
-                a valid converter can still emit harmless warnings.</li>
-            </${UL}>
-            <${P} className="mt-3">The saved converter is indistinguishable from a hand-written one and is
-              matched to future uploads just like a built-in.</${P}>
-            <${P} className="mt-3"><strong>No API key?</strong> Use the clipboard option above, or build a
-              converter by hand with <strong>Bootstrap manually</strong>, which proposes a spec from
-              heuristics and lets you adjust the column/regex mapping with a live preview.</${P}>
-          </${Section}>
-
-          <${Section} id="review" title="Reviewing before import">
-            <${P}>Parsing a document opens the <strong>Review</strong> screen so nothing is imported
-              blindly. Each row can be edited inline — date, description, merchant, category, and type —
-              excluded, or deleted before you commit.</${P}>
-            <${Sub}>Duplicates</${Sub}>
-            <${P}>Every transaction gets a fingerprint from its date, amount, type, description, and
-              account. Rows that match something already imported are flagged as
-              ${' '}<strong>duplicates</strong> and unchecked automatically, so re-importing the same statement
-              twice never creates doubles.</${P}>
-            <${Sub}>Filters & warnings</${Sub}>
-            <${P}>Filter the list to <em>Duplicates</em>, <em>Excluded</em>, or <em>Issues only</em>. If
-              the converter produced any non-fatal warnings (for example a statement total that didn't add
-              up to the penny), they appear in an expandable <strong>parse warnings</strong> panel. When
-              reviewing a batch, a progress banner shows which file you're on.</${P}>
-          </${Section}>
-
-          <${Section} id="transactions" title="Transactions">
-            <${P}>The Transactions view is the searchable ledger across every account. Filter by date
-              range, account, category, or free-text search; sort any column; and page through large sets.</${P}>
-            <${UL}>
-              <li><strong>Inline category</strong> — change a transaction's category right in the table.</li>
-              <li><strong>Exclude</strong> — tick a row to keep it out of reports without deleting it.</li>
-              <li><strong>+rule</strong> — turn a transaction into a reusable category rule (see
-                ${' '}<${Jump} onJump=${jump} id="categorization">Categories & rules</${Jump}>).</li>
-              <li><strong>Source ⓘ</strong> — see which statement a transaction came from.</li>
-              <li><strong>🔁</strong> marks charges detected as recurring.</li>
-              <li><strong>Export CSV</strong> downloads the currently filtered rows.</li>
-            </${UL}>
-          </${Section}>
-
-          <${Section} id="categorization" title="Categories & rules">
-            <${P}>Each transaction has a <strong>type</strong> (expense, income, transfer, refund, or
-              CC payment) inferred from its amount sign and account, and a <strong>category</strong>${' '}
-              (Groceries, Dining, Subscriptions, …).</${P}>
-            <${Sub}>Automatic categorization</${Sub}>
-            <${P}>On import, descriptions are matched against a built-in library of merchant
-              keywords (grocery chains, restaurants, fuel stations, and so on).
-              Anything unmatched lands in <em>Other</em>.</${P}>
-            <${Sub}>Your own rules</${Sub}>
-            <${P}>Create rules from the <strong>+rule</strong> button on any transaction. A rule has a
-              ${' '}<strong>pattern</strong>, a <strong>match type</strong> (<${C}>contains</${C}>,
-              ${' '}<${C}>startswith</${C}>, or <${C}>regex</${C}>), a target category, and a
-              ${' '}<strong>priority</strong> (higher runs first). You can apply a new rule to all existing
-              transactions at once.</${P}>
-            <${Sub}>AI Suggest</${Sub}>
-            <${P}>When transactions are uncategorized, the <strong>AI Suggest</strong> button offers
-              bulk suggestions. Two ways to run it:</${P}>
-            <${UL}>
-              <li><strong>With an API key</strong> — it categorizes in batches automatically.</li>
-              <li><strong>Clipboard, no key</strong> — copy the generated prompt, paste it into Claude.ai
-                or ChatGPT, and paste the JSON answer back.</li>
-            </${UL}>
-            <${P} className="mt-2">Either way you review every suggestion, uncheck any you don't want, and
-              optionally save them as rules so future imports categorize themselves.</${P}>
-            <${Note}><strong>What this sends.</strong> Unlike the rest of the app, AI Suggest sends data to
-              an AI provider: just your <em>transaction descriptions</em> (merchant text), deduplicated and
-              limited to the uncategorized ones. Amounts, dates, balances, and account names are never sent.
-              Descriptions can still be personal — subscriptions, or e-transfer recipient names — and the
-              modal lets you preview the exact list before running. Note the two paths differ in privacy:
-              the <strong>API key</strong> path goes to the provider under its API terms (generally not used
-              for training), while the <strong>clipboard</strong> path routes through consumer Claude.ai /
-              ChatGPT, which may retain or train on chats unless you've opted out in their settings.</${Note}>
-          </${Section}>
-
-          <${Section} id="reports" title="Reports">
-            <${P}>Reports summarize spending over a date range you control with quick presets (this
-              month, last month, 3/6 months, this/last year) or custom dates. You can scope to one
-              account and choose whether to <strong>exclude transfers</strong> and
-              ${' '}<strong>CC payments</strong> so they don't distort spending totals.</${P}>
-            <${UL}>
-              <li><strong>Summary tiles</strong> — total expenses, total income, net, and average per month.</li>
-              <li><strong>Monthly expenses</strong> — expenses vs. income per month.</li>
-              <li><strong>By category</strong> — a breakdown of where the money went.</li>
-              <li><strong>Top merchants</strong> — click a row to expand its individual transactions.</li>
-              <li><strong>Month-over-month</strong> — percentage change vs. the previous month.</li>
-              <li><strong>Recurring charges</strong> — see <${Jump} onJump=${jump} id="recurring">below</${Jump}>.</li>
-            </${UL}>
-            <${P} className="mt-2">Your report range and toggles are remembered between visits.</${P}>
-          </${Section}>
-
-          <${Section} id="recurring" title="Recurring charges">
-            <${P}>Loonie Ledger flags likely subscriptions and other monthly debits automatically. A
-              merchant is treated as recurring when it has:</${P}>
-            <${UL}>
-              <li>at least <strong>3 charges</strong> from the same merchant,</li>
-              <li>spaced roughly <strong>25–35 days apart</strong>, and</li>
-              <li>within about <strong>10% of the typical (median) amount</strong>.</li>
-            </${UL}>
-            <${P} className="mt-2">The Reports table lists each one with its typical amount, cadence, last
-              seen date, and an estimated monthly total. Matching charges are marked with 🔁 in the
-              Transactions view too.</${P}>
-          </${Section}>
-
-          <${Section} id="history" title="Upload history">
-            <${P}>The History view is a log of every document you've uploaded — filename, institution,
-              account, converter used, and status. Deleting a document here also removes the transactions
-              that came from it (you're told how many before confirming), which is the clean way to undo a
-              bad import.</${P}>
-          </${Section}>
-
-          <${Section} id="settings" title="Settings">
-            <${UL}>
-              <li><strong>Date format</strong> — ISO (<${C}>2025-05-31</${C}>) or friendly (<${C}>May 31st, 2025</${C}>).</li>
-              <li><strong>AI assistant</strong> — choose your provider and save/clear the API key used by
-                the converter wizard. The key never touches your transactions or backups.</li>
-              <li><strong>Export backup</strong> — download all transactions, accounts, and converters as
-                one JSON file.</li>
-              <li><strong>Import backup</strong> — replace all data from a previously exported file.</li>
-              <li><strong>Factory reset</strong> — delete everything and restore the built-in converters.</li>
-            </${UL}>
-          </${Section}>
-
-          <${Section} id="faq" title="FAQ & troubleshooting">
-            <${Sub}>My bank isn't built in.</${Sub}>
-            <${P}>Drop a statement, then use <strong>✨ Set up with AI</strong> (or Bootstrap manually) to
-              create a converter. After that, uploads from that bank work like any built-in.</${P}>
-            <${Sub}>The dates on my PDF are wrong.</${Sub}>
-            <${P}>PDF transaction lines often print only the month and day, so the converter recovers the
-              year from the statement's period header. If that header doesn't match, the converter shows a
-              warning in the review screen — adjust the converter (or ask the AI wizard to fix it).</${P}>
-            <${Sub}>I see a "total didn't match" warning.</${Sub}>
-            <${P}>Some converters cross-check the parsed sum against a printed statement total. A mismatch
-              is a <strong>non-fatal</strong> heads-up to double-check a few rows; it doesn't block import.</${P}>
-            <${Sub}>Will re-importing a statement duplicate everything?</${Sub}>
-            <${P}>No. Duplicate detection (see <${Jump} onJump=${jump} id="review">Reviewing</${Jump}>)
-              fingerprints each transaction and skips ones you already have.</${P}>
-            <${Sub}>The footer says I'm working in memory.</${Sub}>
-            <${P}>Your browser blocked persistent storage. Use <strong>Settings → Export backup</strong>${' '}
-              before closing the tab so you don't lose your data.</${P}>
-          </${Section}>
-
+          <${HelpBody} onJump=${jump} />
         </${Card}>
       </div>
     </div>
   </${PageContainer}>`;
 }
 
-// Inline text link that jumps to another help section.
-function Jump({ id, onJump, children }) {
-  return html`<button type="button" onClick=${() => onJump(id)} class="text-maple-deep hover:underline font-medium">${children}</button>`;
+export function HelpPanel() {
+  const { state, dispatch } = useApp();
+  const panel = state.helpPanel;
+  const anchor = panel ? panel.anchor : null;
+  const isOpen = !!panel;
+  const scrolledFor = useRef(null);
+  const panelBodyRef = useRef(null);
+
+  useEffect(() => {
+    if (!anchor) return;
+    if (scrolledFor.current === anchor) return;
+    const id = requestAnimationFrame(() => {
+      const el = document.getElementById(anchor);
+      const container = panelBodyRef.current;
+      if (el && container) {
+        const top = el.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
+        container.scrollTo({ top: Math.max(0, top - 16), behavior: 'smooth' });
+        scrolledFor.current = anchor;
+      }
+    });
+    return () => cancelAnimationFrame(id);
+  }, [anchor]);
+
+  useEffect(() => {
+    if (!isOpen) scrolledFor.current = null;
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e) => { if (e.key === 'Escape') dispatch({ type: 'CLOSE_HELP_PANEL' }); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = ''; };
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const close = () => dispatch({ type: 'CLOSE_HELP_PANEL' });
+  const jump = (id) => dispatch({ type: 'OPEN_HELP_PANEL', anchor: id });
+
+  return html`<div
+    class="fixed inset-0 z-40 flex flex-col justify-end sm:flex-row sm:justify-end"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Help"
+  >
+    <!-- Backdrop -->
+    <div
+      class="absolute inset-0 help-backdrop-enter"
+      style=${{ background: 'rgba(22,24,31,0.45)' }}
+      onClick=${close}
+    />
+
+    <!-- Panel: bottom sheet on mobile, right slide-over on sm+ -->
+    <div class="relative help-panel-enter flex flex-col bg-paper shadow-2xl rounded-t-2xl h-[85vh] w-full sm:rounded-none sm:h-full sm:max-w-lg">
+
+      <!-- Header -->
+      <div class="flex-shrink-0 flex items-center justify-between px-5 py-3.5 border-b border-rule">
+        <span class="font-serif text-lg text-ink" style=${{ letterSpacing: '-0.02em' }}>Help</span>
+        <button
+          type="button"
+          onClick=${close}
+          class="w-7 h-7 flex items-center justify-center rounded-full text-ink-mute hover:text-ink hover:bg-paper-3 transition-colors text-sm"
+          aria-label="Close help"
+        >✕</button>
+      </div>
+
+      <!-- Section pills -->
+      <div
+        class="flex-shrink-0 flex gap-1.5 overflow-x-auto px-4 py-2.5 border-b border-rule"
+        style=${{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
+        ${SECTIONS.map(s => html`<button
+          key=${s.id}
+          type="button"
+          onClick=${() => jump(s.id)}
+          class=${`text-xs whitespace-nowrap px-2.5 py-1 rounded-full border transition-colors flex-shrink-0 ${
+            anchor === s.id
+              ? 'bg-maple-deep text-white border-transparent'
+              : 'text-ink-2 border-rule hover:text-ink hover:border-ink-mute'
+          }`}
+        >${s.title}</button>`)}
+      </div>
+
+      <!-- Scrollable content -->
+      <div ref=${panelBodyRef} class="flex-1 overflow-y-auto px-5 sm:px-6 py-5">
+        <${HelpBody} onJump=${jump} />
+      </div>
+    </div>
+  </div>`;
 }
