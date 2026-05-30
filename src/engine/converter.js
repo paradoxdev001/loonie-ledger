@@ -30,7 +30,7 @@ export async function readFileForParse(file, format) {
 }
 
 export async function pdfToText(uint8) {
-  const loadingTask = pdfjsLib.getDocument({ data: uint8 });
+  const loadingTask = pdfjsLib.getDocument({ data: uint8.slice() });
   const pdf = await loadingTask.promise;
   const pages = [];
   for (let i = 1; i <= pdf.numPages; i++) {
@@ -57,7 +57,7 @@ export async function pdfToText(uint8) {
 }
 
 export async function pdfToRows(uint8) {
-  const loadingTask = pdfjsLib.getDocument({ data: uint8 });
+  const loadingTask = pdfjsLib.getDocument({ data: uint8.slice() });
   const pdf = await loadingTask.promise;
   const allRows = [];
   for (let i = 1; i <= pdf.numPages; i++) {

@@ -62,7 +62,8 @@ async function detectConverterByContent(file, format) {
       const txns = result.transactions?.length || 0;
       if (txns === 0) continue;
       scored.push({ converter, spec, txns, errs: result.errors?.length || 0 });
-    } catch { /* converter doesn't fit this file */ }
+    } catch {
+    }
   }
   if (!scored.length) return null;
   // Prefer a clean parse, then the one that recognized the most transactions.
@@ -264,6 +265,7 @@ export function UploadView() {
     if (!hint || hint.converter.format !== detectedFormat) {
       const detected = await detectConverterByContent(f, detectedFormat);
       if (detected) {
+        setReuseHint({ doc: null, converter: detected.converter, account: null });
         setInstitution(detected.converter.institution || '');
         setAccountType(detected.converter.account_type || '');
         setAccountName(detected.spec.default_account || '');
@@ -418,12 +420,14 @@ export function UploadView() {
         ${file && reuseHint && html`<${Card}>
           <div class="p-5 border-l-4 border-maple bg-paper-3 rounded-r-lg">
             <div class="text-sm font-medium text-forest">
-              Matches a previous upload — reuse <span class="font-semibold">${reuseHint.converter.name}</span>?
+              ${reuseHint.doc
+                ? html`Matches a previous upload — reuse <span class="font-semibold">${reuseHint.converter.name}</span>?`
+                : html`Detected from file contents — use <span class="font-semibold">${reuseHint.converter.name}</span>?`}
             </div>
             <div class="text-xs text-forest mt-1">
-              Filename matches <span class="font-mono">${reuseHint.doc.filename}</span>
+              ${reuseHint.doc ? html`<span>Filename matches <span class="font-mono">${reuseHint.doc.filename}</span></span>` : null}
               ${reuseHint.account ? html`<span> · account <span class="font-medium">${reuseHint.account.account_name}</span></span>` : null}
-              ${reuseHint.doc.uploaded_at ? html`<span> · last used ${new Date(reuseHint.doc.uploaded_at).toLocaleDateString()}</span>` : null}
+              ${reuseHint.doc?.uploaded_at ? html`<span> · last used ${new Date(reuseHint.doc.uploaded_at).toLocaleDateString()}</span>` : null}
             </div>
             <div class="mt-3 flex gap-2">
               <${Button} onClick=${() => onConverterChosen(reuseHint.converter)} disabled=${busy}>
