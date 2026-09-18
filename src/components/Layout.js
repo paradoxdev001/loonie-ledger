@@ -10,6 +10,7 @@ export function Header() {
 
   const tabs = [
     { key: 'upload',       label: 'Upload' },
+    { key: 'redaction',    label: 'Redact' },
     { key: 'transactions', label: 'Transactions' },
     { key: 'reports',      label: 'Reports' },
     { key: 'history',      label: 'History' },
@@ -103,7 +104,7 @@ export function PageHeader({ title, description, action }) {
 export function Footer() {
   return html`<footer class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 mt-12 border-t border-rule-soft">
     <p class="text-xs text-ink-mute font-mono uppercase tracking-widest">
-      Local-only · ${STORAGE_MODE === 'idb' ? 'IndexedDB' : STORAGE_MODE === 'localstorage' ? 'localStorage' : 'In-memory (use Export to save)'} · No data leaves your machine
+      Stored locally · ${STORAGE_MODE === 'idb' ? 'IndexedDB' : STORAGE_MODE === 'localstorage' ? 'localStorage' : 'In-memory (use Export to save)'} · Optional AI shares reviewed samples or descriptions
     </p>
   </footer>`;
 }

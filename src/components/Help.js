@@ -94,8 +94,8 @@ function HelpBody({ onJump }) {
     </${Section}>
 
     <${Section} id="privacy" title="Privacy & your data">
-      <${P}>Everything you import stays inside this browser. Your transactions are never sent
-        to any server. There is exactly one optional exception, described in
+      <${P}>Your ledger is stored in this browser. Optional AI converter setup shares a reviewed
+        statement sample, and AI Suggest shares selected transaction descriptions. See
         ${' '}<${Jump} onJump=${onJump} id="ai-converters">AI converter setup</${Jump}>.</${P}>
       <${Sub}>Where your data lives</${Sub}>
       <${P}>On startup the app picks the best available storage: <${C}>IndexedDB</${C}> first,
@@ -186,13 +186,17 @@ function HelpBody({ onJump }) {
       <${Sub}>What the AI sees (and what it doesn't)</${Sub}>
       <${P}>The model's <strong>only</strong> job is to write the parser spec. It receives a short
         excerpt of your statement so it can learn the <em>layout</em> — column positions, date
-        formats, where the amount sits. It never receives your imported transactions, and once the
+        formats, where the amount sits. Any dates, merchants and amounts left in the approved sample are shared. Once the
         spec is saved, all parsing happens locally with no further AI involvement.</${P}>
-      <${Note}><strong>You can redact before anything is sent.</strong> After the privacy notice, the
-        wizard shows you the exact statement sample in an editable box — this applies to both the API
-        and clipboard paths. Edit out your name and address, full account numbers (last 4 digits are
-        fine), and exact balances. 5–10 representative rows are plenty — dates, merchant names, and
-        amounts can stay, since they help the AI understand the format.</${Note}>
+      <${Note}><strong>Local Redact is built into converter setup.</strong> It scans the sample for
+        cards, government IDs, email, phone, postal codes and labelled account numbers locally.
+        Add names, addresses and other personal values, or select text in the original sample.
+        Review the matches and edit the resulting text before approving it for API or clipboard use.
+        Detection can miss information. Dates, merchants and amounts remain unless you remove them.
+        Original filenames, parsed rows and detailed validation errors are not added to follow-ups.
+        This converter step changes the shared sample only; local imports still use your original file.
+        For full-document PDF, DOCX, CSV or text exports, use the Redact tab or Upload → Review full document.
+        Both use the saved name/value pairs in Settings → Redaction. Scanned PDFs require OCR outside this app.</${Note}>
 
       <${Sub}>Two ways to talk to the model</${Sub}>
       <${P}><strong>Option 1 — API key.</strong> You supply an API key from

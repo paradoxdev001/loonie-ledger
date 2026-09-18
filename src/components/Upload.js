@@ -1,4 +1,6 @@
 import html from '../html.js';
+import { UploadPrivacyPreview } from './UploadPrivacyPreview.js';
+import { DocumentRedaction } from './DocumentRedaction.js';
 import { useState, useEffect, useMemo, useRef } from '../react.js';
 import { useApp } from '../state.js';
 import { dao } from '../db/store.js';
@@ -6,7 +8,7 @@ import { ACCOUNT_TYPES, ACCOUNT_TYPE_LABEL } from '../constants.js';
 import { classNames, fingerprint, formatBatchSummary, getCurrency } from '../utils.js';
 import { detectFormat, readFileForParse, applyConverter, pdfToText } from '../engine/converter.js';
 import { autoCategorize, extractMerchant, reconcileTypeForCategory } from '../engine/categorizer.js';
-import { Button, Card, CardHeader, Badge, Label, Input, Select, HelpLink } from './ui/index.js';
+import { Button, Card, CardHeader, Badge, Label, Input, Select, HelpLink, Modal } from './ui/index.js';
 import { PageContainer, PageHeader } from './Layout.js';
 import { BootstrapWizard, AIConverterWizard, InstitutionPicker } from './BootstrapWizard.js';
 
@@ -217,11 +219,16 @@ export function UploadView() {
   const [file, setFile] = useState(null);
   const [format, setFormat] = useState(null);
   const [previewText, setPreviewText] = useState('');
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState('');
+  const selectionId = useRef(0);
+  useEffect(() => () => { selectionId.current++; }, []);
   const [institution, setInstitution] = useState('');
   const [accountType, setAccountType] = useState('');
   const [accountName, setAccountName] = useState('');
   const [bootstrapOpen, setBootstrapOpen] = useState(false);
   const [aiWizardOpen, setAiWizardOpen] = useState(false);
+  const [redactionOpen, setRedactionOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [recent, setRecent] = useState([]);
   const [reuseHint, setReuseHint] = useState(null);
@@ -230,8 +237,11 @@ export function UploadView() {
 
   const handleFile = async (files) => {
     const f = files[0];
-    setFile(f);
+    const request = ++selectionId.current;
+    setFile(f); setPreviewText(''); setPreviewError(''); setPreviewLoading(true); setReuseHint(null);
+    setFormat(null);
     const detectedFormat = detectFormat(f.name, await f.slice(0, 200).text().catch(() => ''));
+    if (request !== selectionId.current) return;
     setFormat(detectedFormat);
 
     const hint = findReuseHint(f.name);
@@ -247,23 +257,24 @@ export function UploadView() {
       setAccountName('');
     }
 
-    if (detectedFormat === 'csv' || detectedFormat === 'unknown') {
-      const t = await f.text();
-      setPreviewText(t.slice(0, 2000));
-    } else if (detectedFormat === 'pdf') {
-      try {
-        const buf = await f.arrayBuffer();
-        const text = await pdfToText(new Uint8Array(buf));
-        setPreviewText(text.slice(0, 2000));
-      } catch (e) {
-        setPreviewText('(PDF preview failed: ' + e.message + ')');
-      }
+    try {
+      const text = detectedFormat === 'pdf'
+        ? await pdfToText(new Uint8Array(await f.arrayBuffer()))
+        : await f.text();
+      if (request !== selectionId.current) return;
+      setPreviewText(text);
+    } catch (e) {
+      if (request === selectionId.current) setPreviewError('Could not read the statement preview. Try reviewing the full document.');
+    } finally {
+      if (request === selectionId.current) setPreviewLoading(false);
     }
+    if (request !== selectionId.current) return;
 
     // No filename-history match — fall back to matching by file contents so we
     // can still prefill the institution / account fields for a first-time file.
     if (!hint || hint.converter.format !== detectedFormat) {
       const detected = await detectConverterByContent(f, detectedFormat);
+      if (request !== selectionId.current) return;
       if (detected) {
         setReuseHint({ doc: null, converter: detected.converter, account: null });
         setInstitution(detected.converter.institution || '');
@@ -409,11 +420,11 @@ export function UploadView() {
               <${CardHeader}
                 title=${file.name}
                 subtitle=${`${(file.size / 1024).toFixed(1)} KB · detected ${format?.toUpperCase() || '?'}`}
-                right=${html`<${Button} variant="ghost" size="sm" onClick=${() => { setFile(null); setPreviewText(''); setReuseHint(null); }}>Change</${Button}>`}
+                right=${html`<${Button} variant="ghost" size="sm" onClick=${() => { selectionId.current++; setFile(null); setPreviewText(''); setReuseHint(null); setPreviewError(''); setPreviewLoading(false); }}>Change</${Button}>`}
               />
               <div class="p-5">
-                <${Label}>Preview</${Label}>
-                <pre class="mt-1 text-xs bg-paper border border-rule rounded p-3 max-h-48 overflow-auto scrollbar-thin font-mono whitespace-pre-wrap">${previewText || '(empty)'}</pre>
+                <${UploadPrivacyPreview} source=${previewText} loading=${previewLoading} error=${previewError}
+                  reviewOpen=${redactionOpen} onReview=${() => setRedactionOpen(true)} />
               </div>
             </${Card}>`}
 
@@ -483,6 +494,9 @@ export function UploadView() {
       </div>
     </div>
 
+    ${redactionOpen && file && html`<${Modal} open=${true} onClose=${() => setRedactionOpen(false)} title="Review statement redaction" size="xl">
+      <${DocumentRedaction} file=${file} />
+    </${Modal}>`}
     <${BootstrapWizard}
       open=${bootstrapOpen}
       onClose=${() => setBootstrapOpen(false)}

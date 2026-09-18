@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!--
+  Strict CSP: this app can only load same-origin resources and can only
+  fetch() same-origin (the vendored WASM). There is no origin it could send
+  your data to. Open devtools → Network to verify: zero outbound requests.
+-->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' blob: data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Loonie Ledger — Document redaction</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<header class="chrome">
+  <div class="brand">
+    <svg class="logo" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="2" width="18" height="20" rx="2" class="logo-doc"/><rect x="6" y="6" width="12" height="2" rx="1" class="logo-line"/><rect x="6" y="10.5" width="12" height="3.4" rx="1" class="logo-bar"/><rect x="6" y="16" width="8" height="2" rx="1" class="logo-line"/></svg>
+    <span class="brand-name">Document redaction</span>
+    <span class="ver" id="verLabel">v1.0</span>
+  </div>
+  <div class="chrome-right">
+    <button id="localBadge" class="badge-local" type="button" title="How to verify this yourself">
+      <span class="dot" aria-hidden="true"></span>Local document processing
+    </button>
+    <a id="repoLink" class="ghlink" href="#" target="_blank" rel="noopener noreferrer">
+      <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+      <span>Open source</span>
+    </a>
+    <button id="gearBtn" class="iconbtn" type="button" title="My information &amp; detection settings" aria-label="Settings">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M19.14 12.94a7.07 7.07 0 0 0 .05-.94 7.07 7.07 0 0 0-.05-.94l2.03-1.58a.5.5 0 0 0 .12-.63l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.2 7.2 0 0 0-1.63-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.59.24-1.13.56-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.65 8.85a.5.5 0 0 0 .12.63l2.03 1.58a7.07 7.07 0 0 0 0 1.88l-2.03 1.58a.5.5 0 0 0-.12.63l1.92 3.32c.13.22.39.31.6.22l2.39-.96c.5.38 1.04.7 1.63.94l.36 2.54c.04.24.25.42.5.42h3.84c.25 0 .46-.18.5-.42l.36-2.54c.59-.24 1.13-.56 1.63-.94l2.39.96c.21.09.47 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.63l-2.03-1.58ZM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7Z"/></svg>
+    </button>
+  </div>
+</header>
+
+<main id="view-config" class="view" hidden>
+  <section class="intro" id="configIntro">
+    <h1>Redact documents. <em>Nothing leaves this device.</em></h1>
+    <p class="intro-p">Make a sanitized copy of a bank statement, tax form, contract or letter that is ready for your review before sharing. Detection, review and redaction all run in this browser tab — the workspace uses bundled local libraries, including its PDF engine.</p>
+  </section>
+
+  <div class="cols">
+    <section class="card">
+      <h2>My information</h2>
+      <p class="hint">Your own known values — the only reliable way to catch names, addresses and account numbers. Add anything you'd want gone: family members, employer, case numbers. You don't need every format of a number; <strong>416-555-1234</strong> also matches <strong>(416) 555 1234</strong> and <strong>4165551234</strong>.</p>
+      <div id="presetFields" class="preset-grid"></div>
+      <h3>Custom values</h3>
+      <div id="customRows"></div>
+      <button id="addCustom" class="btn small" type="button">+ Add a value</button>
+    </section>
+
+    <section class="card">
+      <h2>Detect anything that looks like this</h2>
+      <p class="hint">Structured identifiers found by validated patterns — checksummed where possible, so an order number doesn't get mistaken for a card. Patterns can't find names; that's what “My information” is for.</p>
+      <div id="patternToggles"></div>
+    </section>
+  </div>
+
+  <div class="config-actions">
+    <p class="vault-note" id="vaultNote"></p>
+    <div class="config-btns">
+      <button id="wipeVault" class="btn danger-link" type="button">Erase all saved values</button>
+      <span class="spacer"></span>
+      <button id="cancelConfig" class="btn" type="button" hidden>Cancel</button>
+      <button id="saveConfigBtn" class="btn primary" type="button">Save &amp; continue</button>
+    </div>
+  </div>
+</main>
+
+<main id="view-main" class="view" hidden>
+  <section id="dropzone" class="dropzone" aria-label="Drop a document to redact">
+    <svg class="drop-ic" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19 13v6a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-6h2v6h10v-6h2Zm-6-9.83 3.59 3.58L18 5.34 12 -.66 6 5.34l1.41 1.41L11 3.17V16h2V3.17Z" transform="translate(0 1)"/></svg>
+    <h2>Drop a document</h2>
+    <p class="drop-sub">Text · CSV · DOCX · PDF (text-based) — scanned/image PDFs aren't supported yet</p>
+    <div class="drop-actions">
+      <label class="btn primary filebtn">Choose file<input id="fileInput" type="file" accept=".txt,.text,.md,.log,.csv,.docx,.pdf"></label>
+      <button id="pasteToggle" class="btn" type="button">Paste text</button>
+      <button id="sampleBtn" class="btn ghost" type="button">Try the sample statement</button>
+    </div>
+    <div id="pasteBox" class="pastebox" hidden>
+      <textarea id="pasteArea" rows="8" placeholder="Paste document text here…"></textarea>
+      <button id="pasteGo" class="btn primary" type="button">Review &amp; redact</button>
+    </div>
+    <p class="drop-note">Documents are processed in this tab only — never uploaded, never stored.</p>
+  </section>
+
+  <section id="review" hidden>
+    <div class="review-head">
+      <div class="file-meta">
+        <strong id="fileName"></strong>
+        <span id="fileKind" class="pill"></span>
+        <span id="modeNote" class="pill warn" hidden>pattern-only mode</span>
+      </div>
+      <div class="review-actions">
+        <button id="rescanBtn" class="btn small" type="button">Re-scan</button>
+        <button id="newFileBtn" class="btn small" type="button">New file</button>
+      </div>
+    </div>
+    <div id="chips" class="chips"></div>
+    <p class="reminder">Automated detection is imperfect — skim the highlights before downloading. Click a highlight to remove it; select any text to add one.</p>
+    <div class="review-body">
+      <aside id="summaryPane" class="summary">
+        <div id="csvColumns" class="csv-cols" hidden></div>
+        <div id="summaryGroups"></div>
+      </aside>
+      <div id="previewPane" class="previewpane">
+        <div id="pdfTabs" class="tabs" hidden>
+          <button data-tab="pages" class="tab active" type="button">Page view</button>
+          <button data-tab="text" class="tab" type="button">Text view</button>
+          <span class="tabs-hint">select text to redact in Text view</span>
+        </div>
+        <div id="pdfTextNote" class="preview-note" hidden></div>
+        <div id="previewNote" class="preview-note" hidden></div>
+        <div id="previewScroll" class="preview-scroll"><div id="previewContent"></div></div>
+      </div>
+    </div>
+    <div class="download-bar">
+      <span class="dl-note">The document itself is never stored — it lives in this tab and is gone when you close it. Only your value vault persists, on this device.</span>
+      <span class="dl-btns">
+        <button id="copyBtn" class="btn" type="button" hidden>Copy redacted text</button>
+        <button id="downloadBtn" class="btn primary" type="button">Download redacted copy</button>
+      </span>
+    </div>
+    <div id="dlFallback" class="dl-fallback" hidden>
+      <span>Embedded pages like this demo often block automatic downloads. Your redacted copy is ready and waiting in memory —</span>
+      <button id="openTabBtn" class="btn small" type="button">Open it in a new tab</button>
+      <span>and save it from there.</span>
+    </div>
+  </section>
+
+  <section id="errorState" class="errorstate" hidden>
+    <h2 id="errorTitle"></h2>
+    <p id="errorMsg"></p>
+    <button id="errorBack" class="btn" type="button">Back</button>
+  </section>
+</main>
+
+<footer class="chrome-foot">
+  <span>LocalRedact is a privacy-hygiene aid — <strong>not</strong> a compliance tool, an anonymization certification, or legal review. Always check the output yourself.</span>
+</footer>
+
+<dialog id="verifyDialog" class="modal">
+  <h2><span class="dot big" aria-hidden="true"></span> Running locally — verify it yourself</h2>
+  <p>Every step — parsing, detection, redaction, download — happens in this browser tab. This workspace processes documents locally and shares its saved settings only with the surrounding Loonie Ledger app. It does not send them to an external service.</p>
+  <ol>
+    <li>Open your browser's developer tools and switch to the <strong>Network</strong> tab.</li>
+    <li>Turn off Wi-Fi, or use the devtools <strong>Offline</strong> mode.</li>
+    <li>Configure values, drop a document, review, and download the redacted copy.</li>
+    <li>The redaction workspace loads its bundled PDF engine from this local server as needed. It makes no external document requests. Its Content-Security-Policy blocks connections to other origins; Loonie Ledger’s separate optional AI tools can still send the text you choose to share.</li>
+  </ol>
+  <h3>What is stored, and where</h3>
+  <p>Only your value vault (the “My information” list) persists — encrypted with AES-GCM using a non-extractable key held by this browser profile, in IndexedDB. The surrounding app can use this key; encryption does not isolate the profile from app scripts. Documents are processed in memory and are gone when the tab closes.</p>
+  <h3>Threat model, plainly</h3>
+  <p>This protects you from sending identifiers to cloud services. It does <em>not</em> protect against malware on your own machine, anyone with access to your browser profile, or re-identification from context that remains in the document. It is a privacy-hygiene aid, not a compliance tool or legal review.</p>
+  <p id="diagLine" class="diag"></p>
+  <form method="dialog"><button class="btn primary">Got it</button></form>
+</dialog>
+
+<dialog id="noValuesDialog" class="modal">
+  <h2>No personal values configured yet</h2>
+  <p>Pattern detection alone finds structured identifiers (cards, SINs/SSNs, emails…) but <strong>cannot find names or addresses</strong> — it doesn't know yours. For full coverage, add your information first.</p>
+  <div class="modal-btns">
+    <button id="nvConfigure" class="btn primary" type="button">Configure my info</button>
+    <button id="nvPatternOnly" class="btn" type="button">Continue pattern-only</button>
+  </div>
+</dialog>
+
+<div id="toast" class="toast" hidden></div>
+<button id="selRedact" class="sel-redact" type="button" hidden>Redact selection</button>
+
+<script src="../vendor/jszip.min.js"></script>
+<script src="../vendor/libphonenumber-js.min.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

@@ -1,4 +1,5 @@
 import html from '../html.js';
+import { RedactionSettings } from './RedactionSettings.js';
 import { useState, useRef } from '../react.js';
 import { useApp } from '../state.js';
 import { dao } from '../db/store.js';
@@ -79,6 +80,10 @@ export function SettingsView() {
 
     <div class="space-y-6">
       <${Card}>
+        <${CardHeader} title="Redaction" subtitle="Your saved personal values and automatic detection preferences." />
+        <div class="p-4"><${RedactionSettings} /></div>
+      </${Card}>
+      <${Card}>
         <${CardHeader} title="Display" />
         <div class="px-4 pb-4">
           <div class="text-sm font-medium text-ink-2 mb-2">Date format</div>
@@ -111,7 +116,7 @@ export function SettingsView() {
       </${Card}>
 
       <${Card}>
-        <${CardHeader} title="AI assistant" subtitle="Optional. Used only by the AI converter wizard to draft parser specs — your transactions are never sent to the model." />
+        <${CardHeader} title="AI assistant" subtitle="Optional. Converter setup shares a reviewed sample; AI category suggestions share transaction descriptions." />
         <div class="px-4 pb-4 space-y-3">
           <div>
             <${Label}>Provider</${Label}>
@@ -160,7 +165,7 @@ export function SettingsView() {
           <div class="flex items-center justify-between px-4 py-3">
             <div>
               <div class="text-sm font-medium text-plum">Factory reset</div>
-              <div class="text-xs text-ink-mute mt-0.5">Delete all transactions, accounts, history, and custom converters. Built-in converters are restored.</div>
+              <div class="text-xs text-ink-mute mt-0.5">Delete all transactions, accounts, history, and custom converters. Built-in converters are restored. Saved redaction values are managed separately above.</div>
             </div>
             <${Button} variant="danger" size="sm" onClick=${resetAll}>Reset</${Button}>
           </div>

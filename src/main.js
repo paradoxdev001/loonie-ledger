@@ -4,6 +4,7 @@ import { AppContext, initialState, reducer } from './state.js';
 import { initDB, seedBuiltins, STORE } from './db/store.js';
 import { Header, Footer } from './components/Layout.js';
 import { Toast, Card, Button } from './components/ui/index.js';
+import { RedactionView } from './components/DocumentRedaction.js';
 import { UploadView } from './components/Upload.js';
 import { ReviewView } from './components/Review.js';
 import { TransactionsView } from './components/Transactions.js';
@@ -53,6 +54,7 @@ function App() {
   return html`<${AppContext.Provider} value=${ctx}>
     <${Header} />
     ${state.view === 'home' && html`<${HomeView} />`}
+    ${state.view === 'redaction' && html`<${RedactionView} />`}
     ${state.view === 'upload' && html`<${UploadView} />`}
     ${state.view === 'review' && html`<${ReviewView} />`}
     ${state.view === 'transactions' && html`<${TransactionsView} />`}

@@ -1,4 +1,6 @@
 import html from '../html.js';
+import { RedactionReview } from './RedactionReview.js';
+import { safeValidationSummary, statementPrompt } from '../redaction/statement.js';
 import { useState, useEffect, useRef, useMemo, Fragment } from '../react.js';
 import { ACCOUNT_TYPES, ACCOUNT_TYPE_LABEL, KNOWN_INSTITUTIONS } from '../constants.js';
 import { formatMoney, classNames, uid, getCurrency } from '../utils.js';
@@ -410,7 +412,7 @@ export function LivePreview({ file, spec, format }) {
   if (preview.rows.length === 0) return html`<div class="text-sm text-ink-mute">No transactions matched yet. Adjust the spec above.</div>`;
 
   return html`<div>
-    <div class="text-xs text-ink-mute mb-2">Showing 5 of ${preview.total}.</div>
+    <div class="text-xs text-ink-mute mb-2">Showing ${Math.min(5, preview.total)} of ${preview.total}.</div>
     <div class="border border-rule rounded-lg overflow-hidden">
       <table class="w-full text-xs">
         <thead class="bg-paper text-ink-2">
@@ -496,6 +498,9 @@ export function AIConverterWizard({ open, onClose, file, format, defaults, onSav
   // before copying. The system prompt + framing are assembled around it at
   // copy time, so the edit box stays focused on just the document.
   const [clipDocCtx, setClipDocCtx] = useState(null);
+  const [redactionSource, setRedactionSource] = useState(null);
+  const extractionId = useRef(0);
+  const [redactionDraft, setRedactionDraft] = useState(null);
   const [clipTweak, setClipTweak] = useState('');
   const [clipResponse, setClipResponse] = useState('');
   const [clipCopied, setClipCopied] = useState(false);
@@ -510,25 +515,32 @@ export function AIConverterWizard({ open, onClose, file, format, defaults, onSav
   const cfg = getLLMConfig();
 
   useEffect(() => {
-    if (!open || !file) return;
+    if (!open || !file) {
+      setRedactionSource(null); setRedactionDraft(null); setClipDocCtx(null);
+      return;
+    }
     setMessages([]); setSpec(null); setParseResult(null); setFatal(null); setInput('');
-    setMode(null); setClipDocCtx(null); setClipTweak(''); setClipResponse(''); setClipCopied(false); setClipCopiedOnce(false);
+    setMode(null); setRedactionSource(null); setRedactionDraft(null); setClipDocCtx(null); setClipTweak(''); setClipResponse(''); setClipCopied(false); setClipCopiedOnce(false);
     setMeta(m => ({ ...m, name: defaults?.institution ? `${defaults.institution} (${(format || '').toUpperCase()}, AI)` : `New ${(format || '').toUpperCase()} converter` }));
     setStage('notice');
+    return () => { extractionId.current++; };
   }, [open, file]);
 
   async function handleNoticeConfirmed() {
     // Extract the statement sample up front so the user can redact it before
     // choosing how to send it — applies to both the API and clipboard paths.
-    setStage('mode'); setBusy(true); setFatal(null);
+    const requestId = ++extractionId.current;
+    setStage('redact'); setBusy(true); setFatal(null);
     try {
       const ctx = await extractDocContext();
-      setClipDocCtx(ctx);
+      if (requestId !== extractionId.current) return;
+      if (!ctx.trim()) throw new Error('No readable text found. Scanned PDFs need OCR before converter setup.');
+      setRedactionSource(ctx);
     } catch (e) {
       console.error(e);
-      setFatal(e.message);
+      if (requestId === extractionId.current) setFatal(e.message);
     } finally {
-      setBusy(false);
+      if (requestId === extractionId.current) setBusy(false);
     }
   }
 
@@ -561,7 +573,7 @@ export function AIConverterWizard({ open, onClose, file, format, defaults, onSav
     try {
       const rows = await pdfToRows(u8);
       const sample = rows.slice(0, 45).map(r =>
-        'y=' + r.y + ' | ' + r.items.map(it => `[x=${Math.round(it.x)}]${it.str}`).join(' ')
+        'y=' + r.y + ' | x positions: ' + r.items.map(it => Math.round(it.x)).join(', ') + ' | text: ' + r.items.map(it => it.str).join(' ')
       ).join('\n').slice(0, 4000);
       ctx += '\n\n--- ITEM X-COORDINATES (first rows; use these to set x_min/x_max for layout:"columns") ---\n' + sample;
     } catch (_) {}
@@ -587,14 +599,7 @@ export function AIConverterWizard({ open, onClose, file, format, defaults, onSav
     }
   }
 
-  function summarize(pr) {
-    if (!pr) return 'No parse run yet.';
-    if (pr.error) return 'The engine threw an error: ' + pr.error;
-    const out = [`Parsed ${pr.rows.length} transaction(s); ${pr.errors.length} warning(s).`];
-    if (pr.errors.length) out.push('Warnings:\n' + pr.errors.slice(0, 10).map(e => e.row ? `Row ${e.row}: ${e.error}` : e.error).join('\n'));
-    if (pr.rows.length) out.push('Sample parsed rows:\n' + pr.rows.slice(0, 4).map(t => `${t.transaction_date} | ${t.description} | ${formatMoney(t.signed_amount)} | ${t.transaction_type}`).join('\n'));
-    return out.join('\n');
-  }
+  const summarize = safeValidationSummary;
 
   async function callModel(list) {
     const conf = getLLMConfig();
@@ -605,7 +610,7 @@ export function AIConverterWizard({ open, onClose, file, format, defaults, onSav
   async function startAnalysis() {
     setStage('analyzing'); setBusy(true); setFatal(null);
     try {
-      const ctx = clipDocCtx != null ? clipDocCtx : await extractDocContext();
+      const ctx = clipDocCtx; // No fallback to unreviewed source text.
       const firstText = buildFirstText(ctx);
       let list = [{ role: 'user', text: firstText, display: `Analyze ${file.name}` }];
       setMessages(list); setStage('chat');
@@ -665,7 +670,7 @@ export function AIConverterWizard({ open, onClose, file, format, defaults, onSav
   // Wraps the (possibly redacted) statement sample with framing the engine
   // expects. Kept separate from the edit box so the user only edits the sample.
   function buildFirstText(ctx) {
-    return `Document type: ${(format || '').toUpperCase()}\nFilename: ${file?.name || ''}\n\nDocument excerpt:\n---\n${ctx}\n---\n\nAnalyze this statement and produce a converter spec.`;
+    return statementPrompt(format, ctx);
   }
 
   // The text the user copies into Claude.ai/ChatGPT. First turn carries the
@@ -727,10 +732,10 @@ export function AIConverterWizard({ open, onClose, file, format, defaults, onSav
 
   if (stage === 'notice') {
     return html`<${Modal} open=${open} onClose=${onClose} title="Set up a converter with AI"
-      footer=${html`<${Fragment}><${Button} variant="ghost" onClick=${onClose}>Cancel</${Button}><${Button} onClick=${handleNoticeConfirmed}>Got it, proceed</${Button}></${Fragment}>`}>
+      footer=${html`<${Fragment}><${Button} variant="ghost" onClick=${onClose}>Cancel</${Button}><${Button} onClick=${handleNoticeConfirmed}>Review & redact sample</${Button}></${Fragment}>`}>
       <div class="space-y-4 max-w-xl">
         <div class="rounded-lg bg-butter-soft border border-butter-line p-4 text-sm text-butter-deep">
-          <p class="font-semibold mb-2">Consider removing personal information first</p>
+          <p class="font-semibold mb-2">Review privacy before sharing</p>
           <p class="mb-3 text-butter-deep">
             The wizard will send a portion of your document to an AI model to learn its format.
             The AI only needs to see the structure — not your actual data.
@@ -747,13 +752,21 @@ export function AIConverterWizard({ open, onClose, file, format, defaults, onSav
             Dates, merchant names, and amounts can stay; they help the AI understand the format.
           </p>
           <p class="text-butter-deep mt-3">
-            On the next screen you'll see the exact sample and can edit it before anything is sent.
+            Next, Local Redact will scan the sample locally. Review detections and add your personal values before sharing.
           </p>
         </div>
         <div class="text-xs text-ink-mute">
           Want the full picture first? <${HelpLink} anchor="ai-converters" label="Read how AI converter setup works" />
         </div>
       </div>
+    </${Modal}>`;
+  }
+
+  if (stage === 'redact') {
+    return html`<${Modal} open=${open} onClose=${onClose} title="Redact statement sample" size="lg">
+      ${fatal ? html`<div class="space-y-3"><p class="text-sm text-plum">${fatal}</p><${Button} onClick=${handleNoticeConfirmed}>Retry extraction</${Button}></div>`
+        : redactionSource == null ? html`<p class="text-sm text-ink-mute">Extracting the sample locally…</p>`
+        : html`<${RedactionReview} source=${redactionSource} draft=${redactionDraft} onReviewed=${(text, draft) => { setRedactionDraft(draft); setClipDocCtx(text); setStage('mode'); }} />`}
     </${Modal}>`;
   }
 
@@ -767,17 +780,18 @@ export function AIConverterWizard({ open, onClose, file, format, defaults, onSav
         ${!ready ? html`<div class="py-8 text-center text-ink-mute text-sm">Preparing a sample of your statement…</div>` : html`<${Fragment}>
           <div>
             <div class="flex items-center justify-between mb-1">
-              <${Label}>Statement sample — redact anything sensitive</${Label}>
+              <${Label}>Approved statement sample</${Label}>
               <span class="text-[11px] text-ink-mute">name, address, full account numbers</span>
             </div>
             <textarea
               value=${clipDocCtx || ''}
-              onChange=${e => setClipDocCtx(e.target.value)}
+              readOnly
               rows="9"
               class="w-full font-mono text-[11px] border border-rule rounded p-2 resize-y bg-white focus:outline-none focus:ring-2 focus:ring-maple"
             ></textarea>
-            <p class="text-[11px] text-ink-mute mt-1">Keep a few rows with dates and amounts so the model can learn the layout. The fixed formatting instructions are added automatically.</p>
+            <p class="text-[11px] text-ink-mute mt-1">Only this approved sample and fixed formatting instructions are included. Original filenames and local validation details are omitted.</p>
           </div>
+          <${Button} variant="secondary" onClick=${() => setStage('redact')}>Review redaction again</${Button}>
           <div class="text-ink-2 font-medium pt-1">Then choose how to send it:</div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div class="border border-rule rounded-lg p-4 space-y-3">

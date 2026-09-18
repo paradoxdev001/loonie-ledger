@@ -25,3 +25,5 @@ node_modules/
 dist/
 build/
 .vercel/
+# Claude Code local config
+.claude/

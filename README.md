@@ -8,7 +8,7 @@ A local-only household finance tracker for bank statements. No accounts, no clou
 - **Auto-categorization** of transactions via rule-based matching, with manual review before import.
 - **Deduplication** — re-importing an overlapping statement won't create duplicate transactions.
 - **Spending reports** and recurring-bill detection, charted with Chart.js.
-- **AI-assisted converter authoring** — point the wizard at a statement from an unsupported bank and it drafts a parser spec for you (bring your own Anthropic or OpenAI key). The model only ever emits a JSON spec; it never sees your transaction data, and parsing itself stays 100% deterministic.
+- **AI-assisted converter authoring** — point the wizard at a statement from an unsupported bank and it drafts a parser spec for you (bring your own Anthropic or OpenAI key). The model receives a sample you review and redact with the integrated Local Redact engine. Any transaction details left in that sample are shared; parsing stays deterministic and local.
 - **Fully local** — all data lives in your browser (IndexedDB), with JSON export/import for backups.
 
 ## Running locally
@@ -63,8 +63,48 @@ Each institution's parser is a JSON spec stored in the DB. See `CLAUDE.md` for t
 
 ## Data
 
-All data is local to your browser. Use **Export backup** (header) to save a JSON snapshot and **Import backup** to restore. No data leaves your machine.
+Your ledger is stored locally in your browser. Optional AI converter setup shares the approved statement sample; AI category suggestions share transaction descriptions. Use **Export backup** (header) to save a JSON snapshot and **Import backup** to restore. Ordinary imports do not send statement contents to a server. The app currently loads its UI libraries from CDNs, so initial loading requires network access.
 
 ## License
 
 [MIT](LICENSE) © Paradox Dev
+
+The redaction workspace bundles third-party libraries with their own licenses under `src/redaction/vendor/`:
+[MuPDF](https://mupdf.com/) (AGPL-3.0), [JSZip](https://stuk.github.io/jszip/) (MIT) and
+[libphonenumber-js](https://gitlab.com/catamphetamine/libphonenumber-js) (MIT). Because MuPDF is AGPL,
+anyone who deploys a modified copy of this app must also publish their source, as this repository does.
+The imported Local Redact code keeps its MIT notice in `src/redaction/LICENSE`.
+
+## Redaction workspace and saved values
+
+Open **Settings → Redaction** to save first name, last name, email, address,
+phone, custom label/value pairs and detection preferences. The encrypted local
+profile applies automatically in both the document workspace and AI converter
+sample review. Keep using the same browser and URL (including the port).
+
+Open **Redact** for Local Redact's complete document workflow: TXT, CSV, DOCX and
+text-based PDF; highlighted matches, manual selection, whole-column CSV redaction,
+PDF page/text views, copying and same-format exports. Or choose one statement in
+**Upload → Review full document** to review that file directly, without AI setup. The initial upload preview already
+applies your saved redaction settings, reports detected matches, and keeps original
+text hidden until you explicitly reveal it.
+Downloads use a `_redacted` filename suffix. Originals remain unchanged for local
+financial parsing. Entirely scanned PDFs and images require OCR. PDFs with a mixture of readable
+and textless pages open for review; textless pages are preserved unchanged. Automatic detection can miss information; review the output.
+
+Converter setup uses the same saved values before either API or clipboard sharing.
+Validation follow-ups share counts rather than original rows or error strings.
+User-written follow-up messages are shared as entered. AI category suggestions
+still use their separate description-sharing flow.
+
+Saved values are excluded from ledger backups and managed separately from ledger
+resets. Existing settings in a separately hosted Local Redact app are not migrated
+automatically. See [integration notes](src/redaction/README.md) for architecture,
+limits and upstream features preserved. Bundled libraries retain their separate
+license notices under `src/redaction/vendor/` (including MuPDF).
+
+Run the regression tests with Node 22+ (no npm install needed):
+
+```sh
+node --experimental-default-type=module --test tests/redaction/*.mjs
+```

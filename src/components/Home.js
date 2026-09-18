@@ -29,7 +29,7 @@ export function HomeView() {
     {
       icon: '🔒',
       title: 'Private by design',
-      description: 'All data stays in your browser. No accounts, no cloud sync, no servers. Nothing leaves your machine.',
+      description: 'Your ledger stays in your browser. No accounts or cloud sync. Review and redact statement samples before optional AI converter setup.',
     },
     {
       icon: '📄',
@@ -79,7 +79,7 @@ export function HomeView() {
       <p class="mt-5 text-lg text-ink-2 max-w-2xl mx-auto leading-relaxed">
         Loonie Ledger turns your downloaded bank and credit card statements into a clear picture of your spending — automatically
         categorizing transactions and charting where your money goes across every account. No bank-linking services, no third-party
-        access, no subscription. Your financial data never leaves your computer.
+        access, no subscription. Your ledger stays in your browser; optional AI tools share samples or descriptions you choose.
       </p>
       <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
         <${Button} size="lg" onClick=${goToUpload}>Get started — it's free</${Button}>
