@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-A local-only household finance tracker split into native ES modules under `src/`. No build step, no npm, no bundler. Libraries (React 18, PapaParse, PDF.js, Chart.js, Tailwind) are loaded from CDN as UMD globals. JSX is replaced with **htm** tagged template literals. The CSV sample file `download-transactions.csv` is a test fixture for the RBC Visa converter.
+A local-only household finance tracker split into native ES modules under `src/`. No build step, no npm, no bundler. Libraries (React 18, PapaParse, PDF.js, Chart.js, Tailwind) are loaded from CDN as UMD globals. JSX is replaced with **htm** tagged template literals. The CSV sample file `download-transactions.csv` is a test fixture for the RBC Visa converter. The one exception to "no vendored code" is the redaction module under `src/redaction/`, which ships its own libraries (MuPDF wasm, JSZip, libphonenumber-js) so the redaction iframe can run under a self-only CSP. Tests exist only for that module and run on Node 22+ with no install step (see Development workflow).
 
 ## Architecture
 
@@ -35,6 +35,18 @@ A local-only household finance tracker split into native ES modules under `src/`
 | `src/components/Reports.js` | `ReportsView` — Chart.js charts; also exports `detectRecurring` |
 | `src/components/History.js` | `HistoryView` — upload history |
 | `src/components/Converters.js` | `ConvertersView` — manage/edit/delete converter specs |
+| `src/components/DocumentRedaction.js` | `DocumentRedaction` (iframe host + postMessage profile bridge), `RedactionView` — the Redact tab |
+| `src/components/RedactionReview.js` | `RedactionReview` — detect/approve a statement sample before it goes to an AI |
+| `src/components/RedactionSettings.js` | `RedactionSettings` — Settings → Redaction card (saved personal values + detector toggles) |
+| `src/components/UploadPrivacyPreview.js` | `UploadPrivacyPreview` — auto-redacted preview on the Upload page; original hidden behind an explicit reveal |
+| `src/redaction/profile.js` | `PRESETS`, `normalizeProfile`, `loadProfile`/`saveProfile`, `vaultStatus` — the shared redaction profile service |
+| `src/redaction/statement.js` | `detectStatementCandidates`, `reviewStatement`, `safeValidationSummary`, `statementPrompt` — finance-specific policy over the engine |
+| `src/redaction/vault.js` | AES-GCM + IndexedDB encrypted vault (DB `loonieledger_redaction`), in-memory fallback when storage is unavailable |
+| `src/redaction/pdf.js` | `createPdfEngine(mupdf)` — MuPDF wrapper: page previews + true content-removal redaction |
+| `src/redaction/engine/` | Upstream Local Redact engine, unmodified: `patterns.js`, `detect.js`, `tokenize.js`, `denylist.js`, `normalize.js`, `validators.js`, `csv.js`, `docx.js` |
+| `src/redaction/workspace/` | Upstream Local Redact vanilla-JS UI (`index.html`, `js/app.js`, `css/app.css`) loaded in an iframe; `js/vault.js` bridges to the parent |
+| `src/redaction/vendor/` | Vendored MuPDF (AGPL-3.0, ~10 MB wasm), JSZip, libphonenumber-js, plus licence files and `VERSIONS.json` |
+| `tests/redaction/` | Node test-runner suites (`*.test.mjs`) for the engine, vault/profile, statement policy, and CSV/DOCX/PDF round-trips |
 
 ### Data model
 
@@ -122,12 +134,30 @@ Alongside the heuristic Bootstrap Wizard, users can author a converter conversat
 
 **Browser-direct calls:** both providers normally block browser requests via CORS. Anthropic is opted-in with the `anthropic-dangerous-direct-browser-access: true` header; OpenAI just needs the `Authorization` bearer. This is acceptable only because each user brings their own rotatable key (the danger the header guards against — leaking *your* key to *other people's* browsers — doesn't apply when the key owner is the only browser). A future server component would move the call server-side and drop the header.
 
-**Wizard flow (`AIConverterWizard`):** has stages `notice → mode → (key) → chat`. The privacy `notice` confirms, then `handleNoticeConfirmed` extracts the document excerpt **once, up front** — for PDFs it sends `pdfToText` output **plus a `pdfToRows` x-coordinate sample** so `layout:"columns"` statements (TD Business, BMO) are solvable, since plain text loses the x-coords that distinguish debit vs. credit. The excerpt lands in editable `clipDocCtx` state, shown on the `mode` screen so the user can **redact before anything is sent** — this gates *both* delivery paths (the API path no longer re-extracts; `startAnalysis` reads `clipDocCtx`). `buildFirstText(clipDocCtx)` wraps the (possibly redacted) sample with the framing the engine expects, keeping the edit box focused on just the document. The `mode` screen then forks:
+**Wizard flow (`AIConverterWizard`):** has stages `notice → redact → mode → (key) → chat`. The privacy `notice` confirms, then `handleNoticeConfirmed` extracts the document excerpt **once, up front** — for PDFs it sends `pdfToText` output **plus a `pdfToRows` x-coordinate sample** so `layout:"columns"` statements (TD Business, BMO) are solvable, since plain text loses the x-coords that distinguish debit vs. credit. The raw excerpt lands in `redactionSource` (guarded by an `extractionId` ref so a stale extraction can't overwrite a newer one; an empty excerpt is a fatal "needs OCR" error) and the `redact` stage renders `RedactionReview` over it. Only when the user approves does the reviewed text land in `clipDocCtx`, which gates *both* delivery paths — `startAnalysis` reads `clipDocCtx` and has **no fallback** to the unreviewed source. The `mode` screen shows the approved sample read-only with a "Review redaction again" button; the review's `draft` (custom values, disabled spans, manual edits, profile key) is kept in `redactionDraft` so re-opening restores the user's choices. `buildFirstText(clipDocCtx)` delegates to `statementPrompt(format, text)`, which deliberately omits the filename. The `mode` screen then forks:
 
-- **Option 1 — API key (`mode==='api'`):** runs the **auto-validation loop** — after each spec it calls `applyConverter` locally and feeds parse errors back to the model for up to 2 silent retries before handing control to the user, who refines further in chat.
-- **Option 2 — Clipboard (`mode==='clip'`, no key):** mirrors the categorize flow's clipboard option. `clipPrompt` (derived) is `LLM_SYSTEM_PROMPT` + `buildFirstText(clipDocCtx)` on turn 1, and an **incremental** follow-up (`buildFollowupPrompt` = the local `summarize(parseResult)` + the user's tweak) on later turns — never the whole transcript, since the user's Claude.ai/ChatGPT chat keeps context. The user copies, pastes the reply back, and `extractSpecJson` (forgiving: prefers a ```json fence, else outermost `{…}`) → `normalizeWizardSpec` → `validate` runs it locally. Round-1 instructions show a 3-step indicator driven by `clipStepActive` (copy → paste into chat → paste reply); the **Copy follow-up** button stays disabled when the parse is clean and no tweak is typed, so it can't mislead.
+- **Option 1 — API key (`mode==='api'`):** runs the **auto-validation loop** — after each spec it calls `applyConverter` locally and feeds `safeValidationSummary(parseResult)` back to the model for up to 2 silent retries before handing control to the user, who refines further in chat.
+- **Option 2 — Clipboard (`mode==='clip'`, no key):** mirrors the categorize flow's clipboard option. `clipPrompt` (derived) is `LLM_SYSTEM_PROMPT` + `buildFirstText(clipDocCtx)` on turn 1, and an **incremental** follow-up (`buildFollowupPrompt` = `safeValidationSummary(parseResult)` + the user's tweak) on later turns — never the whole transcript, since the user's Claude.ai/ChatGPT chat keeps context. The user copies, pastes the reply back, and `extractSpecJson` (forgiving: prefers a ```json fence, else outermost `{…}`) → `normalizeWizardSpec` → `validate` runs it locally. Round-1 instructions show a 3-step indicator driven by `clipStepActive` (copy → paste into chat → paste reply); the **Copy follow-up** button stays disabled when the parse is clean and no tweak is typed, so it can't mislead.
 
-Both paths share `LivePreview`, the parsed/warnings chips, and a soft save gate (`parsedCount > 0`, not zero-errors, since valid converters emit benign warnings). When a spec parses but Save is still disabled, a hint names the missing required field (converter name / institution). `normalizeWizardSpec()` folds the schema's `pdf_columns` array into `spec.columns` (what the engine reads) before validation/save. Redaction only affects the AI prompt — the saved converter always parses the **full original file** locally, and saved specs are indistinguishable from manually-authored ones.
+Both paths share `LivePreview`, the parsed/warnings chips, and a soft save gate (`parsedCount > 0`, not zero-errors, since valid converters emit benign warnings). When a spec parses but Save is still disabled, a hint names the missing required field (converter name / institution). `normalizeWizardSpec()` folds the schema's `pdf_columns` array into `spec.columns` (what the engine reads) before validation/save. Redaction only affects the AI prompt — the saved converter always parses the **full original file** locally, and saved specs are indistinguishable from manually-authored ones. `safeValidationSummary` is the only summary that may reach a model: it emits row/warning **counts** and never rows, warning strings or exception text, because converters interpolate source text into all three. User-typed follow-up messages are sent verbatim.
+
+### Redaction module (Local Redact integration)
+
+`src/redaction/` is a port of the standalone MIT-licensed **Local Redact** app. Its engine and vanilla-JS workspace UI are kept as close to upstream as possible (see `src/redaction/README.md` for the list of intentional adaptations and `docs/review-and-redaction.md` for the integration review); ledger-specific policy lives in `statement.js` and `profile.js`, and React wrappers live in `src/components/`. Three entry points share one saved profile:
+
+- **Redact tab** (`RedactionView` → `DocumentRedaction`) — hosts `workspace/index.html` in a same-origin `<iframe>`. The workspace has its own strict self-only CSP, but that is *not* a security boundary against the parent page's scripts. It handles full-document TXT/CSV/DOCX/text-PDF review and same-format `_redacted` exports; MuPDF is `import()`ed lazily only when a PDF is opened. PDFs with at least one text page are accepted; entirely textless PDFs need OCR, which the app does not provide.
+- **Upload → Review full document** — `UploadView` renders `UploadPrivacyPreview` in place of the old raw `<pre>` preview. It runs `reviewStatement` over the **full** extracted text (not the 2000-char clip, so identifiers can't be cut mid-token at the boundary), shows the redacted text, and hides the original behind an explicit reveal button. File selection is guarded by a `selectionId` ref so a slow PDF extraction can't populate a preview for a file the user has since replaced. The button opens `DocumentRedaction` in a modal and posts the dropped `File` into the iframe.
+- **AI converter wizard `redact` stage** — `RedactionReview` (see Wizard flow above).
+
+**Profile + vault.** A profile is `{ version, values: [{ id, label, value, tokenPrefix }], patterns: { <category>: bool } }`. Preset values (`PRESETS` in `profile.js`: first/last name, email, address, city, postal, phone) have ids `p:<key>`; custom pairs are `c:<uuid>`; per-review session values from the `RedactionReview` textarea are `session:<n>` and are never saved. `normalizeProfile` drops blank values, derives `tokenPrefix` from the label via `sanitizePrefix` ("Account number" → `ACCOUNT_NUMBER`), and forces finance-oriented detector defaults (`phone`, `dob`, `account` on; `zip_us` off). The profile is encrypted with a **non-extractable** AES-GCM key and stored in its own IndexedDB database (`loonieledger_redaction`, stores `keys` + `vault`) — it is **not** part of `STORE`, so it is excluded from JSON backups and untouched by factory reset. `initVault` degrades to in-memory when IndexedDB/WebCrypto is unavailable and `vaultStatus().persisted` tells the UI to say "session only". A failed decrypt **throws** rather than returning an empty profile, so personal matching never silently switches off. Never put profile values in `STORE`, `localStorage`, or any prompt.
+
+**Iframe bridge.** The workspace's `js/vault.js` replaces upstream's direct IndexedDB access with `postMessage` to the parent. Protocol (all messages same-origin checked on both sides, and `event.source` checked against the frame's `contentWindow` / `window.parent`): the frame posts `ledger-redaction-ready` on load; the parent may reply with `ledger-redaction-file` carrying a `File`; the frame posts `ledger-redaction-request` `{ id, action: 'load'|'save', config }` and the parent (`DocumentRedaction`) answers `ledger-redaction-response` `{ id, config, persisted, status }` or `{ id, error }`. Requests time out after 15 s. When the workspace is opened standalone (no parent), the same module falls back to calling `profile.js` directly.
+
+**Detection policy (`statement.js`).** `detectStatementCandidates` runs the upstream `runDetection` with the saved values + session values + pattern toggles, and injects `libphonenumber` from the global (loaded as a classic script in `index.html`) if present. It adds one ledger-specific detector on top: **labelled account numbers** (`Account: 003-1234567`, `Card #…`) — arbitrary digit runs are deliberately *not* matched because they collide with dates and amounts. `reviewStatement` is the one-call wrapper (`detect → finalizeSpans → applyToText`) used by both the Upload preview and `RedactionReview`; `disabledKeys` carries the user's unchecked spans.
+
+**Licensing.** MuPDF is **AGPL-3.0**; the decision (Sept 2026) was to keep it, because the repo is public and the obligation is already met. If the app ever needs to go closed-source, MuPDF must be replaced (PDF.js render + pdf-lib image-only rebuild is the permissive route). Keep the notices under `src/redaction/vendor/` and the README's third-party licence paragraph intact when touching vendored files; bump `VERSIONS.json` on upgrade.
+
+**Tests.** `tests/redaction/*.test.mjs` use Node's built-in runner and the real vendored MuPDF (they re-extract text from exported PDFs to prove content was removed). `tests/redaction/fixtures/minipdf.mjs` builds tiny synthetic PDFs so no real statements are needed. Add a test here for any change to the engine, vault, or statement policy.
 
 ## Development workflow
 
@@ -139,6 +169,14 @@ python3 -m http.server 8080
 ```
 
 Edit any file under `src/` and reload — no build step. Use browser DevTools for debugging. To test a converter against real data, drop a CSV into the Upload view and pick the matching institution.
+
+The redaction module has automated tests (Node 22+, no `npm install`):
+
+```sh
+node --experimental-default-type=module --test tests/redaction/*.mjs
+```
+
+The finance engine (`converter.js`, `categorizer.js`) currently has no tests; if you add some, use the same runner and directory convention (`tests/<area>/*.test.mjs`).
 
 ## Key institutions (built-in converters)
 
